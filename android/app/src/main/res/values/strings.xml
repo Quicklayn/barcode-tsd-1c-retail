@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Barcode TSD</string>
+    <string name="default_service_url">http://10.0.2.2/RetailTest/hs/BarcodeTSD</string>
+</resources>

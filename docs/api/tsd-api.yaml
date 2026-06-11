@@ -1,0 +1,118 @@
+openapi: 3.1.0
+info:
+  title: Barcode TSD API
+  version: 0.1.0
+  description: Minimal API contract between the Android TSD application and 1C:Retail.
+servers:
+  - url: http://localhost/{infobase}/hs/BarcodeTSD
+    description: Local 1C web publication for the BarcodeTSD HTTP service
+    variables:
+      infobase:
+        default: RetailTest
+paths:
+  /v1/barcode/resolve:
+    post:
+      operationId: resolveBarcode
+      summary: Resolve a scanned product barcode to a product name.
+      description: Looks up a scanned product barcode in the 1C:Retail barcode register and returns the matching item name.
+      security:
+        - basicAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BarcodeResolveRequest"
+            examples:
+              ean13:
+                value:
+                  barcode: "4601234567890"
+      responses:
+        "200":
+          description: Lookup completed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BarcodeResolveResponse"
+        "400":
+          description: Invalid request, including an empty barcode after trimming.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Authentication required or rejected by 1C web publication before the handler runs; response body is publication-dependent.
+        "403":
+          description: Access forbidden by 1C web publication or infobase roles before the handler runs; response body is publication-dependent.
+        "500":
+          description: Unexpected 1C-side error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+components:
+  securitySchemes:
+    basicAuth:
+      type: http
+      scheme: basic
+  schemas:
+    BarcodeResolveRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - barcode
+      properties:
+        barcode:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: Raw scanner payload as received by the Android app.
+    BarcodeResolveResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - status
+        - barcode
+        - matches
+      properties:
+        status:
+          type: string
+          enum:
+            - found
+            - not_found
+            - ambiguous
+          description: Lookup result status.
+        barcode:
+          type: string
+          description: Barcode value used for lookup after server-side normalization.
+        matches:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProductMatch"
+        message:
+          type: string
+          description: Optional user-facing diagnostic message.
+    ProductMatch:
+      type: object
+      additionalProperties: false
+      required:
+        - itemRef
+        - name
+      properties:
+        itemRef:
+          type: string
+          description: Opaque 1C item reference serialized for client display and future requests.
+        name:
+          type: string
+          description: Product name shown to the TSD user.
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+        message:
+          type: string

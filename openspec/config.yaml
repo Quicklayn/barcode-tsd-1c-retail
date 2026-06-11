@@ -1,0 +1,34 @@
+# OpenSpec project configuration.
+# Optional in OpenSpec v1.0+. Provides project-wide context to AI assistants
+# when working with specs and change proposals.
+#
+# Reference: https://github.com/Fission-AI/OpenSpec/blob/main/docs/customization.md
+#
+# Uncomment and fill in the sections relevant to your project. The installer
+# never overwrites this file once it exists, so feel free to customize.
+
+project:
+  name: "Barcode TSD for 1C:Retail 3.0"
+  description: "Native Android TSD application integrated with 1C:Retail 3.0 for barcode-driven warehouse and retail workflows."
+
+context:
+  tech_stack:
+    - "1C:Enterprise 8.3.27 / 1C:Retail 3.0.12.261 baseline export in RT3/"
+    - "1C extension-first backend integration under extension/"
+    - "Native Android Kotlin/Gradle application under android/"
+    - "OpenAPI contracts under docs/api/"
+  conventions:
+    - "OpenSpec is the only SDD workflow."
+    - "RT3/ is a read-only baseline unless a change explicitly authorizes modifying it."
+    - "New 1C server API work is designed for an extension first."
+    - "Android minSdk is 26 for Android 8.0 Oreo support."
+  constraints:
+    - "MVP is online-only: the Android app asks 1C for each barcode lookup."
+    - "Use standard 1C:Retail barcode metadata before adding custom storage."
+    - "Do not add Spec Kit or another parallel SDD framework."
+
+# artifacts:
+#   proposal:
+#     additional_sections: []
+#   tasks:
+#     additional_sections: []

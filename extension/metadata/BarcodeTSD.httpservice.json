@@ -1,0 +1,14 @@
+{
+  "type": "HTTPService",
+  "name": "BarcodeTSD",
+  "synonym": "Barcode TSD",
+  "rootURL": "BarcodeTSD",
+  "urlTemplates": {
+    "Barcode": {
+      "template": "/v1/barcode/resolve",
+      "methods": {
+        "Resolve": "POST"
+      }
+    }
+  }
+}

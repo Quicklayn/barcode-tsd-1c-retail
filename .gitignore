@@ -1,0 +1,29 @@
+.dev.env
+.ai-rules.json
+*.log
+*.tmp
+*.bak
+*.dt
+*.cf
+*.cfe
+*.epf
+*.erf
+
+# 1C runtime / export noise
+1cv8.log
+ConfigDumpInfo*.tmp
+
+# Local 1C:Retail baseline export. Do not publish vendor configuration sources.
+RT3/
+
+# Android / Gradle
+android/local.properties
+android/.gradle/
+android/**/build/
+android/**/.cxx/
+android/captures/
+android/*.iml
+
+# IDE
+.idea/
+.vscode/
