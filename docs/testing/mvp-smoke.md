@@ -43,6 +43,13 @@ $apache = Join-Path $work "apache24"
 
 ## 4. Проверить HTTP
 
+Временная ИБ из XML-выгрузки содержит метаданные, но не содержит товарных
+данных. Для проверки happy-path создайте один тестовый товар и штрихкод:
+
+```powershell
+& "$repo\docs\testing\seed-mvp-data.ps1" -InfoBasePath $ib
+```
+
 ```powershell
 $url = "http://localhost:8081/retailtest/hs/BarcodeTSD/v1/barcode/resolve"
 
@@ -51,13 +58,13 @@ Invoke-WebRequest -Uri $url -Method Post -ContentType "application/json" `
 
 Invoke-WebRequest -Uri $url -Method Post -ContentType "application/json" `
   -Body '{"barcode":"0000000000000"}' -SkipHttpErrorCheck -UseBasicParsing
+
+Invoke-WebRequest -Uri $url -Method Post -ContentType "application/json" `
+  -Body '{"barcode":"2000000000011"}' -UseBasicParsing
 ```
 
 Ожидаемо:
 
 - пустой штрихкод -> `400 invalid_request`;
 - отсутствующий штрихкод -> `200 not_found`.
-
-Happy-path `found` требует ИБ с товарными данными или отдельного seed-скрипта,
-который создаст `Справочник.Номенклатура` и запись
-`РегистрСведений.ШтрихкодыНоменклатуры`.
+- `2000000000011` -> `200 found`, `Тестовый товар MVP`.

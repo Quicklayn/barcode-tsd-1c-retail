@@ -38,7 +38,7 @@
 - [ ] Fill `INFOBASE_PATH` when deploy/load-to-IB is in scope.
 - [ ] Fill `INFOBASE_PUBLISH_URL` when HTTP/UI smoke testing is in scope.
 - [x] Deploy backend to a temporary test infobase created from `RT3/`.
-- [ ] Run one happy-path barcode lookup against a barcode from
+- [x] Run one happy-path barcode lookup against a barcode from
   `РегистрСведений.ШтрихкодыНоменклатуры`.
 - [x] Run no-match and invalid-input HTTP checks against the temporary
   infobase.

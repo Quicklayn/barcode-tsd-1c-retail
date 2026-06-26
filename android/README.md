@@ -11,8 +11,10 @@
 - API: `POST /v1/barcode/resolve` относительно URL сервиса
   `.../hs/BarcodeTSD`.
 - Сеть: `HttpURLConnection`, JSON через `org.json`, Basic Auth опционально.
-- URL по умолчанию `http://10.0.2.2/RetailTest/hs/BarcodeTSD` подходит для
-  Android Emulator; на физическом ТСД укажите реальный адрес web-публикации 1С.
+- URL по умолчанию `http://10.0.2.2:8081/retailtest/hs/BarcodeTSD` подходит для
+  Android Emulator при локальной публикации 1С на
+  `http://localhost:8081/retailtest/hs/BarcodeTSD`; на физическом ТСД укажите
+  реальный адрес web-публикации 1С.
 - Offline, документы, остатки, цены, DataMatrix и vendor SDK вне MVP.
 
 ## Сборка
@@ -37,4 +39,8 @@ adb shell am start -n ru.local.barcodetsd/.MainActivity
 ```
 
 На эмуляторе для обращения к web-публикации на локальном ПК используйте
-`10.0.2.2` вместо `localhost`.
+`10.0.2.2` вместо `localhost`, сохраняя порт и путь публикации. Например:
+`http://localhost:8081/retailtest/hs/BarcodeTSD` на ПК соответствует
+`http://10.0.2.2:8081/retailtest/hs/BarcodeTSD` в приложении на эмуляторе.
+Если debug-приложение уже запускалось со старым URL, измените поле URL вручную
+или очистите данные приложения.
