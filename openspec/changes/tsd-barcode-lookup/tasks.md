@@ -37,10 +37,13 @@
 
 - [ ] Fill `INFOBASE_PATH` when deploy/load-to-IB is in scope.
 - [ ] Fill `INFOBASE_PUBLISH_URL` when HTTP/UI smoke testing is in scope.
-- [ ] Deploy backend to a test infobase.
+- [x] Deploy backend to a temporary test infobase created from `RT3/`.
 - [ ] Run one happy-path barcode lookup against a barcode from
   `РегистрСведений.ШтрихкодыНоменклатуры`.
-- [ ] Run no-match, ambiguous-match, and invalid-input checks.
+- [x] Run no-match and invalid-input HTTP checks against the temporary
+  infobase.
+- [ ] Run ambiguous-match check against an infobase with seeded duplicate
+  barcodes.
 - [x] Run the Android app on emulator or TSD hardware with manual input.
 
 ## Context sources

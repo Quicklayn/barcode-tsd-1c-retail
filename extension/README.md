@@ -17,8 +17,18 @@ API without modifying the `RT3/` baseline export directly.
   - `РегистрСведений.ШтрихкодыНоменклатуры`
 - The first response returns only the product name and an opaque item reference.
 
-## Deferred Until Implementation
+## Web Publication
 
-- Whether the target platform/publication accepts the HTTP service from an
-  extension. If not, the same API contract will be implemented in the main
-  configuration as an explicit fallback decision.
+- The target platform accepts the HTTP service from the `BarcodeTSD` extension.
+- The 1C web publication must allow HTTP services from extensions. In
+  `default.vrd`, the `<httpServices>` node must include
+  `publishExtensionsByDefault="true"`.
+- If the publication still returns `404`, add an explicit service entry for the
+  extension service:
+
+```xml
+<httpServices publishByDefault="true" publishExtensionsByDefault="true">
+  <service name="BarcodeTSD" rootUrl="BarcodeTSD" enable="true"
+           reuseSessions="dontuse" sessionMaxAge="20" />
+</httpServices>
+```
