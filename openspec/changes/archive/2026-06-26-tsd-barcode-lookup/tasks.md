@@ -35,8 +35,10 @@
 
 ## 4. Integration Verification
 
-- [ ] Fill `INFOBASE_PATH` when deploy/load-to-IB is in scope.
-- [ ] Fill `INFOBASE_PUBLISH_URL` when HTTP/UI smoke testing is in scope.
+- [x] `INFOBASE_PATH` was not required: deployment used a temporary infobase
+  path under `%TEMP%\BarcodeTSD_MVP\ib`.
+- [x] `INFOBASE_PUBLISH_URL` was not required: HTTP smoke used the temporary
+  local publication `http://localhost:8081/retailtest`.
 - [x] Deploy backend to a temporary test infobase created from `RT3/`.
 - [x] Run one happy-path barcode lookup against a barcode from
   `РегистрСведений.ШтрихкодыНоменклатуры`.
