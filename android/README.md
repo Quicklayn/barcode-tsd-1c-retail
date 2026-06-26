@@ -21,9 +21,20 @@
 Gradle-командой:
 
 ```powershell
-gradle :app:assembleDebug
+.\gradlew.bat :app:assembleDebug
 ```
 
-Требования выбранной связки: JDK 17, Gradle 9.4.1+, Android SDK API 37.
+Требования выбранной связки: JDK 17, Android SDK API 36. Gradle запускается
+через wrapper из каталога `android/`.
 
 Текущий package/application id для MVP: `ru.local.barcodetsd`.
+
+## Запуск на эмуляторе или ТСД
+
+```powershell
+.\gradlew.bat :app:installDebug
+adb shell am start -n ru.local.barcodetsd/.MainActivity
+```
+
+На эмуляторе для обращения к web-публикации на локальном ПК используйте
+`10.0.2.2` вместо `localhost`.

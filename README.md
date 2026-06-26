@@ -26,10 +26,31 @@ MVP мобильного приложения для ТСД на Android и ра
 
 ## Текущий статус
 
-Реализован первый вертикальный MVP:
+Реализован и локально проверен первый вертикальный MVP:
 
 - `POST /hs/BarcodeTSD/v1/barcode/resolve`;
 - поиск по `РегистрСведений.ШтрихкодыНоменклатуры`;
 - статусы `found`, `not_found`, `ambiguous`;
 - Android-экран ввода/сканирования штрихкода.
 
+## Быстрая проверка Android
+
+```powershell
+cd android
+.\gradlew.bat :app:assembleDebug
+.\gradlew.bat :app:installDebug
+adb shell am start -n ru.local.barcodetsd/.MainActivity
+```
+
+APK после сборки: `android/app/build/outputs/apk/debug/app-debug.apk`.
+
+Для эмулятора URL по умолчанию:
+`http://10.0.2.2/RetailTest/hs/BarcodeTSD`. Для физического ТСД укажите в
+приложении реальный адрес web-публикации 1С.
+
+## Открытый интеграционный шаг
+
+Live-проверка против 1С не выполнена в репозитории, потому что локальные
+`INFOBASE_PATH` и `INFOBASE_PUBLISH_URL` в `.dev.env` не заданы. После их
+заполнения нужно загрузить расширение в тестовую ИБ и проверить happy-path по
+реальному штрихкоду из `РегистрСведений.ШтрихкодыНоменклатуры`.

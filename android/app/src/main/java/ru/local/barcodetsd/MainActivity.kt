@@ -131,10 +131,11 @@ class MainActivity : Activity() {
             val imeSubmit = actionId == EditorInfo.IME_ACTION_DONE ||
                 actionId == EditorInfo.IME_ACTION_GO ||
                 actionId == EditorInfo.IME_ACTION_SEND
-            val enterUp = event != null &&
-                event.action == KeyEvent.ACTION_UP &&
-                event.keyCode == KeyEvent.KEYCODE_ENTER
-            if (imeSubmit || enterUp) {
+            val enterDown = event != null &&
+                event.action == KeyEvent.ACTION_DOWN &&
+                event.keyCode == KeyEvent.KEYCODE_ENTER &&
+                event.repeatCount == 0
+            if (imeSubmit || enterDown) {
                 startLookup()
                 true
             } else {

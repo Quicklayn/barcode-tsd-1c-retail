@@ -20,7 +20,7 @@
 - [x] Return `found`, `not_found`, and `ambiguous` statuses.
 - [x] Return only item reference and `Номенклатура.Наименование` for product
   candidates.
-- [ ] Validate BSL and metadata XML.
+- [x] Validate BSL and metadata XML.
 
 ## 3. Android MVP
 
@@ -41,7 +41,7 @@
 - [ ] Run one happy-path barcode lookup against a barcode from
   `РегистрСведений.ШтрихкодыНоменклатуры`.
 - [ ] Run no-match, ambiguous-match, and invalid-input checks.
-- [ ] Run the Android app on emulator or TSD hardware with manual input.
+- [x] Run the Android app on emulator or TSD hardware with manual input.
 
 ## Context sources
 
