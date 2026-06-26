@@ -1,4 +1,4 @@
-param(
+﻿param(
     [string]$InfoBasePath = (Join-Path $env:TEMP "BarcodeTSD_MVP\ib"),
     [string]$ConnectionString = "",
     [string]$Barcode = "2000000000011",
@@ -64,17 +64,18 @@ function Find-BarcodeMatches {
     )
 
     $query = Invoke-OneCMethod -Object $Connection -Name "NewObject" -Arguments @("Запрос")
-    Set-OneCProperty -Object $query -Name "Текст" -Value @"
-ВЫБРАТЬ РАЗЛИЧНЫЕ
-	ШтрихкодыНоменклатуры.Номенклатура.Наименование КАК Наименование
-ИЗ
-	РегистрСведений.ШтрихкодыНоменклатуры КАК ШтрихкодыНоменклатуры
-ГДЕ
-	ШтрихкодыНоменклатуры.Штрихкод = &Штрихкод
-
-УПОРЯДОЧИТЬ ПО
-	Наименование
-"@
+    $queryText = @(
+        "ВЫБРАТЬ РАЗЛИЧНЫЕ",
+        "	ШтрихкодыНоменклатуры.Номенклатура.Наименование КАК Наименование",
+        "ИЗ",
+        "	РегистрСведений.ШтрихкодыНоменклатуры КАК ШтрихкодыНоменклатуры",
+        "ГДЕ",
+        "	ШтрихкодыНоменклатуры.Штрихкод = &Штрихкод",
+        "",
+        "УПОРЯДОЧИТЬ ПО",
+        "	Наименование"
+    ) -join [Environment]::NewLine
+    Set-OneCProperty -Object $query -Name "Текст" -Value $queryText
     Invoke-OneCMethod -Object $query -Name "УстановитьПараметр" -Arguments @("Штрихкод", $Barcode) | Out-Null
     $queryResult = Invoke-OneCMethod -Object $query -Name "Выполнить"
     $selection = Invoke-OneCMethod -Object $queryResult -Name "Выбрать"

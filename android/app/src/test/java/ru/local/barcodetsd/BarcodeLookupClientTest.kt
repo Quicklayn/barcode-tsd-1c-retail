@@ -9,6 +9,7 @@ import org.junit.Before
 import org.junit.Test
 import java.net.InetSocketAddress
 import java.nio.charset.StandardCharsets
+import java.util.Base64
 
 class BarcodeLookupClientTest {
 
@@ -84,15 +85,81 @@ class BarcodeLookupClientTest {
     }
 
     @Test
+    fun resolveSendsBasicAuthHeader() {
+        val expectedAuth = "Basic " + Base64.getEncoder()
+            .encodeToString("user:secret".toByteArray(StandardCharsets.UTF_8))
+        enqueueResponse(
+            200,
+            """{"status":"found","barcode":"1","matches":[{"name":"Товар"}]}""",
+            expectedAuth
+        )
+
+        val result = client.resolve(serviceUrl, "user", "secret", "1")
+
+        assertTrue(result is LookupResult.Found)
+    }
+
+    @Test
+    fun resolveMapsHttp401ToAuthError() {
+        enqueueResponse(401, """{"message":"Нет доступа"}""")
+
+        val result = client.resolve(serviceUrl, "", "", "1")
+
+        assertTrue(result is LookupResult.AuthError)
+    }
+
+    @Test
+    fun resolveMapsHttp500ToServerError() {
+        enqueueResponse(500, """{"message":"Ошибка 1С"}""")
+
+        val result = client.resolve(serviceUrl, "", "", "1")
+
+        assertTrue(result is LookupResult.ServerError)
+        result as LookupResult.ServerError
+        assertEquals("Ошибка 1С", result.message)
+    }
+
+    @Test
+    fun resolveMapsMalformedJsonToServerError() {
+        enqueueResponse(200, """{""")
+
+        val result = client.resolve(serviceUrl, "", "", "1")
+
+        assertTrue(result is LookupResult.ServerError)
+    }
+
+    @Test
     fun resolveMapsMalformedUrlToInvalidInput() {
         val result = client.resolve("not a url", "", "", "123")
 
         assertTrue(result is LookupResult.InvalidInput)
     }
 
-    private fun enqueueResponse(code: Int, body: String) {
+    @Test
+    fun resolveMapsUnsupportedUrlSchemeToInvalidInput() {
+        val result = client.resolve("file:///tmp/service", "", "", "123")
+
+        assertTrue(result is LookupResult.InvalidInput)
+    }
+
+    @Test
+    fun resolveAcceptsFullEndpointUrl() {
+        enqueueResponse(
+            200,
+            """{"status":"found","barcode":"1","matches":[{"name":"Товар"}]}"""
+        )
+
+        val result = client.resolve("$serviceUrl/v1/barcode/resolve", "", "", "1")
+
+        assertTrue(result is LookupResult.Found)
+    }
+
+    private fun enqueueResponse(code: Int, body: String, expectedAuth: String? = null) {
         server.createContext("/retail/hs/BarcodeTSD/v1/barcode/resolve") { exchange ->
             assertEquals("POST", exchange.requestMethod)
+            if (expectedAuth != null) {
+                assertEquals(expectedAuth, exchange.requestHeaders.getFirst("Authorization"))
+            }
             val requestBody = exchange.requestBody.use { input ->
                 String(input.readBytes(), StandardCharsets.UTF_8)
             }

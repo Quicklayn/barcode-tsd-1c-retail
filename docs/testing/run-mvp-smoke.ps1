@@ -1,4 +1,4 @@
-param(
+﻿param(
     [string]$RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path,
     [string]$V8Path = "C:\Program Files\1cv8\8.3.27.2130\bin",
     [string]$WorkPath = (Join-Path $env:TEMP "BarcodeTSD_MVP"),
@@ -59,6 +59,58 @@ function Test-ExtensionExists {
     return $LASTEXITCODE -eq 0
 }
 
+function Invoke-SmokeRequest {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Url,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Body
+    )
+
+    try {
+        $response = Invoke-WebRequest `
+            -Uri $Url `
+            -Method Post `
+            -Body $Body `
+            -ContentType "application/json; charset=utf-8" `
+            -UseBasicParsing
+
+        return [pscustomobject]@{
+            StatusCode = [int]$response.StatusCode
+            Content = [string]$response.Content
+        }
+    } catch [System.Net.WebException] {
+        $errorResponse = $_.Exception.Response
+        if ($null -eq $errorResponse) {
+            throw
+        }
+
+        $content = [string]$_.ErrorDetails.Message
+        if ([string]::IsNullOrWhiteSpace($content)) {
+            $stream = $errorResponse.GetResponseStream()
+            if ($null -ne $stream) {
+                $reader = New-Object System.IO.StreamReader($stream, [System.Text.Encoding]::UTF8)
+                try {
+                    $content = $reader.ReadToEnd()
+                } finally {
+                    $reader.Dispose()
+                    $stream.Dispose()
+                }
+            }
+        }
+
+        try {
+            return [pscustomobject]@{
+                StatusCode = [int]$errorResponse.StatusCode
+                Content = $content
+            }
+        } finally {
+            $errorResponse.Dispose()
+        }
+    }
+}
+
 function Assert-BarcodeResponse {
     param(
         [Parameter(Mandatory = $true)]
@@ -72,17 +124,12 @@ function Assert-BarcodeResponse {
         [int]$ExpectedCode,
 
         [string]$ExpectedStatus = "",
+        [string]$ExpectedError = "",
         [string]$ExpectedName = ""
     )
 
     $body = @{ barcode = $Barcode } | ConvertTo-Json -Compress
-    $response = Invoke-WebRequest `
-        -Uri $Url `
-        -Method Post `
-        -Body $body `
-        -ContentType "application/json; charset=utf-8" `
-        -UseBasicParsing `
-        -SkipHttpErrorCheck
+    $response = Invoke-SmokeRequest -Url $Url -Body $body
 
     if ($response.StatusCode -ne $ExpectedCode) {
         throw "Barcode '$Barcode' returned HTTP $($response.StatusCode), expected $ExpectedCode. Body: $($response.Content)"
@@ -91,6 +138,10 @@ function Assert-BarcodeResponse {
     $json = $response.Content | ConvertFrom-Json
     if ($ExpectedStatus -and $json.status -ne $ExpectedStatus) {
         throw "Barcode '$Barcode' returned status '$($json.status)', expected '$ExpectedStatus'."
+    }
+
+    if ($ExpectedError -and $json.error -ne $ExpectedError) {
+        throw "Barcode '$Barcode' returned error '$($json.error)', expected '$ExpectedError'."
     }
 
     if ($ExpectedName) {
@@ -242,7 +293,7 @@ try {
     $rootUrl = "http://localhost:$publishedPort/$($AppName.ToLowerInvariant())"
     $url = "$rootUrl/hs/BarcodeTSD/v1/barcode/resolve"
     $results = @(
-        Assert-BarcodeResponse -Url $url -Barcode "" -ExpectedCode 400
+        Assert-BarcodeResponse -Url $url -Barcode "" -ExpectedCode 400 -ExpectedError "invalid_request"
         Assert-BarcodeResponse -Url $url -Barcode "0000000000000" -ExpectedCode 200 -ExpectedStatus "not_found"
         Assert-BarcodeResponse -Url $url -Barcode "2000000000035" -ExpectedCode 200 -ExpectedStatus "found" -ExpectedName "Тестовый товар MVP Found"
         Assert-BarcodeResponse -Url $url -Barcode "2000000000042" -ExpectedCode 200 -ExpectedStatus "ambiguous" -ExpectedName "Тестовый товар MVP Ambiguous 1"

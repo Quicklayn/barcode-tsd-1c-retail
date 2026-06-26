@@ -1,6 +1,5 @@
 package ru.local.barcodetsd
 
-import android.util.Base64
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
@@ -12,6 +11,7 @@ import java.net.HttpURLConnection
 import java.net.MalformedURLException
 import java.net.URL
 import java.nio.charset.StandardCharsets
+import java.util.Base64
 
 internal sealed class LookupResult {
     data class Found(val barcode: String, val name: String) : LookupResult()
@@ -33,7 +33,7 @@ internal class BarcodeLookupClient {
     ): LookupResult {
         var connection: HttpURLConnection? = null
         return try {
-            connection = (URL(resolveEndpoint(serviceUrl)).openConnection() as HttpURLConnection)
+            connection = resolveConnection(serviceUrl)
             val requestBody = JSONObject()
                 .put("barcode", barcode)
                 .toString()
@@ -134,16 +134,21 @@ internal class BarcodeLookupClient {
 
     private fun basicAuth(user: String, password: String): String {
         val credentials = "$user:$password".toByteArray(StandardCharsets.UTF_8)
-        return "Basic ${Base64.encodeToString(credentials, Base64.NO_WRAP)}"
+        return "Basic ${Base64.getEncoder().encodeToString(credentials)}"
     }
 
-    private fun resolveEndpoint(serviceUrl: String): String {
+    private fun resolveConnection(serviceUrl: String): HttpURLConnection {
         val normalized = serviceUrl.trim().trimEnd('/')
-        return if (normalized.endsWith(RESOLVE_PATH)) {
+        val endpoint = if (normalized.endsWith(RESOLVE_PATH)) {
             normalized
         } else {
             normalized + RESOLVE_PATH
         }
+        val url = URL(endpoint)
+        if (url.protocol != "http" && url.protocol != "https") {
+            throw MalformedURLException()
+        }
+        return url.openConnection() as HttpURLConnection
     }
 
     private fun readStream(stream: InputStream?): String {

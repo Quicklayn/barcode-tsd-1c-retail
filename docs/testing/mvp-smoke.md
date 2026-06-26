@@ -86,17 +86,17 @@ $apache = Join-Path $work "apache24"
 ```powershell
 $url = "http://localhost:8081/retailtest/hs/BarcodeTSD/v1/barcode/resolve"
 
-Invoke-WebRequest -Uri $url -Method Post -ContentType "application/json" `
-  -Body '{"barcode":""}' -SkipHttpErrorCheck -UseBasicParsing
+curl.exe -i -X POST -H "Content-Type: application/json" `
+  --data '{"barcode":""}' $url
 
-Invoke-WebRequest -Uri $url -Method Post -ContentType "application/json" `
-  -Body '{"barcode":"0000000000000"}' -SkipHttpErrorCheck -UseBasicParsing
+curl.exe -i -X POST -H "Content-Type: application/json" `
+  --data '{"barcode":"0000000000000"}' $url
 
-Invoke-WebRequest -Uri $url -Method Post -ContentType "application/json" `
-  -Body '{"barcode":"2000000000035"}' -UseBasicParsing
+curl.exe -i -X POST -H "Content-Type: application/json" `
+  --data '{"barcode":"2000000000035"}' $url
 
-Invoke-WebRequest -Uri $url -Method Post -ContentType "application/json" `
-  -Body '{"barcode":"2000000000042"}' -UseBasicParsing
+curl.exe -i -X POST -H "Content-Type: application/json" `
+  --data '{"barcode":"2000000000042"}' $url
 ```
 
 Ожидаемо:

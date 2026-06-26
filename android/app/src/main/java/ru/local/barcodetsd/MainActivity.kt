@@ -24,6 +24,7 @@ class MainActivity : Activity() {
     private val executor: ExecutorService = Executors.newSingleThreadExecutor()
     private val mainHandler = Handler(Looper.getMainLooper())
     private val client = BarcodeLookupClient()
+    private var isLookupInProgress = false
 
     private lateinit var prefs: SharedPreferences
     private lateinit var serviceUrlInput: EditText
@@ -142,6 +143,10 @@ class MainActivity : Activity() {
     }
 
     private fun startLookup() {
+        if (isLookupInProgress) {
+            return
+        }
+
         val serviceUrl = serviceUrlInput.text.toString().trim()
         val barcode = barcodeInput.text.toString().trim()
 
@@ -167,7 +172,11 @@ class MainActivity : Activity() {
         val user = userInput.text.toString()
         val password = passwordInput.text.toString()
         executor.execute {
-            val result = client.resolve(serviceUrl, user, password, barcode)
+            val result = try {
+                client.resolve(serviceUrl, user, password, barcode)
+            } catch (e: RuntimeException) {
+                LookupResult.ConnectionError(e.localizedMessage ?: "Не удалось выполнить запрос к 1С.")
+            }
             mainHandler.post {
                 setLoading(false)
                 showResult(result)
@@ -187,7 +196,7 @@ class MainActivity : Activity() {
             is LookupResult.Found -> {
                 statusView.text = "Найдено"
                 productNameView.text = result.name
-                detailView.text = "Штрихкод: ${result.barcode}"
+                detailView.text = ""
             }
             is LookupResult.NotFound -> {
                 statusView.text = "Не найдено"
@@ -227,6 +236,7 @@ class MainActivity : Activity() {
     }
 
     private fun setLoading(isLoading: Boolean) {
+        isLookupInProgress = isLoading
         progressBar.visibility = if (isLoading) View.VISIBLE else View.GONE
         lookupButton.isEnabled = !isLoading
     }
