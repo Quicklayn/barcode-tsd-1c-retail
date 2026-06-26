@@ -65,20 +65,24 @@ class MainActivity : Activity() {
 
     private fun createContentView(): View {
         serviceUrlInput = EditText(this).apply {
+            id = R.id.service_url_input
             hint = "http://server/infobase/hs/BarcodeTSD"
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
             isSingleLine = true
         }
         userInput = EditText(this).apply {
+            id = R.id.user_input
             hint = "Пользователь 1С (необязательно)"
             isSingleLine = true
         }
         passwordInput = EditText(this).apply {
+            id = R.id.password_input
             hint = "Пароль (необязательно)"
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
             isSingleLine = true
         }
         barcodeInput = EditText(this).apply {
+            id = R.id.barcode_input
             hint = "Штрихкод"
             inputType = InputType.TYPE_CLASS_TEXT
             imeOptions = EditorInfo.IME_ACTION_DONE
@@ -86,21 +90,26 @@ class MainActivity : Activity() {
             setSelectAllOnFocus(true)
         }
         lookupButton = Button(this).apply {
+            id = R.id.lookup_button
             text = "Найти"
         }
         progressBar = ProgressBar(this).apply {
+            id = R.id.lookup_progress
             isIndeterminate = true
             visibility = View.GONE
         }
         statusView = TextView(this).apply {
+            id = R.id.status_view
             textSize = 18f
             setTypeface(typeface, Typeface.BOLD)
         }
         productNameView = TextView(this).apply {
+            id = R.id.product_name_view
             textSize = 24f
             setTypeface(typeface, Typeface.BOLD)
         }
         detailView = TextView(this).apply {
+            id = R.id.detail_view
             textSize = 16f
         }
 
