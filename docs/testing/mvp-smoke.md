@@ -16,6 +16,12 @@
 .\docs\testing\run-mvp-smoke.ps1 -RecreateInfobase
 ```
 
+Если платформа 1С установлена в другой каталог, передайте путь к `bin` явно:
+
+```powershell
+.\docs\testing\run-mvp-smoke.ps1 -V8Path "C:\Program Files\1cv8\8.3.27.2130\bin"
+```
+
 По умолчанию локальный Apache останавливается после проверки. Для ручного
 тестирования Android после smoke-прогона оставьте публикацию включенной:
 

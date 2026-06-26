@@ -71,9 +71,16 @@ APK после сборки: `android/app/build/outputs/apk/debug/app-debug.apk`
 
 Полный сценарий с временной ИБ, публикацией HTTP-сервиса и тестовым штрихкодом
 описан в `docs/testing/mvp-smoke.md`.
+Приемочный чеклист для реального стенда: `docs/deployment/mvp-acceptance.md`.
 
 Быстрый backend smoke-прогон:
 
 ```powershell
 .\docs\testing\run-mvp-smoke.ps1
+```
+
+Если платформа 1С установлена в другой каталог, передайте путь явно:
+
+```powershell
+.\docs\testing\run-mvp-smoke.ps1 -V8Path "C:\Program Files\1cv8\8.3.27.2130\bin"
 ```
