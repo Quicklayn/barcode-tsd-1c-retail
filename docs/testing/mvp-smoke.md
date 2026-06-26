@@ -47,7 +47,16 @@ $apache = Join-Path $work "apache24"
 данных. Для проверки happy-path создайте один тестовый товар и штрихкод:
 
 ```powershell
-& "$repo\docs\testing\seed-mvp-data.ps1" -InfoBasePath $ib
+& "$repo\docs\testing\seed-mvp-data.ps1" `
+  -InfoBasePath $ib `
+  -Barcode "2000000000035" `
+  -Name "Тестовый товар MVP Found"
+
+& "$repo\docs\testing\seed-mvp-data.ps1" `
+  -InfoBasePath $ib `
+  -Barcode "2000000000042" `
+  -Name "Тестовый товар MVP Ambiguous" `
+  -Ambiguous
 ```
 
 ```powershell
@@ -60,11 +69,16 @@ Invoke-WebRequest -Uri $url -Method Post -ContentType "application/json" `
   -Body '{"barcode":"0000000000000"}' -SkipHttpErrorCheck -UseBasicParsing
 
 Invoke-WebRequest -Uri $url -Method Post -ContentType "application/json" `
-  -Body '{"barcode":"2000000000011"}' -UseBasicParsing
+  -Body '{"barcode":"2000000000035"}' -UseBasicParsing
+
+Invoke-WebRequest -Uri $url -Method Post -ContentType "application/json" `
+  -Body '{"barcode":"2000000000042"}' -UseBasicParsing
 ```
 
 Ожидаемо:
 
 - пустой штрихкод -> `400 invalid_request`;
 - отсутствующий штрихкод -> `200 not_found`.
-- `2000000000011` -> `200 found`, `Тестовый товар MVP`.
+- `2000000000035` -> `200 found`, `Тестовый товар MVP Found`.
+- `2000000000042` -> `200 ambiguous`, две позиции
+  `Тестовый товар MVP Ambiguous`.

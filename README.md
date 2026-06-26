@@ -40,8 +40,7 @@ MVP мобильного приложения для ТСД на Android и ра
 - временная файловая ИБ из `RT3/`;
 - импорт, проверка, применение и активация расширения `BarcodeTSD`;
 - web-публикация HTTP-сервиса из расширения;
-- live HTTP smoke для `invalid_request`, `not_found` и `found` на тестовом
-  штрихкоде `2000000000011`.
+- live HTTP smoke для `invalid_request`, `not_found`, `found` и `ambiguous`.
 
 ## Быстрая проверка Android
 

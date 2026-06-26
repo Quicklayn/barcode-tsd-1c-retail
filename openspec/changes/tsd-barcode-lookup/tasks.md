@@ -42,7 +42,7 @@
   `РегистрСведений.ШтрихкодыНоменклатуры`.
 - [x] Run no-match and invalid-input HTTP checks against the temporary
   infobase.
-- [ ] Run ambiguous-match check against an infobase with seeded duplicate
+- [x] Run ambiguous-match check against an infobase with seeded duplicate
   barcodes.
 - [x] Run the Android app on emulator or TSD hardware with manual input.
 
