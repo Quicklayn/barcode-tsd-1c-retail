@@ -37,6 +37,7 @@ MVP мобильного приложения для ТСД на Android и ра
 
 - Android build/install/run на эмуляторе;
 - Android happy-path через mock HTTP;
+- Android JVM unit tests для `BarcodeLookupClient`;
 - временная файловая ИБ из `RT3/`;
 - импорт, проверка, применение и активация расширения `BarcodeTSD`;
 - web-публикация HTTP-сервиса из расширения;
@@ -47,8 +48,17 @@ MVP мобильного приложения для ТСД на Android и ра
 ```powershell
 cd android
 .\gradlew.bat :app:assembleDebug
+.\gradlew.bat :app:testDebugUnitTest
+.\gradlew.bat :app:lintDebug
 .\gradlew.bat :app:installDebug
 adb shell am start -n ru.local.barcodetsd/.MainActivity
+```
+
+Та же проверка, что выполняется в GitHub Actions:
+
+```powershell
+cd android
+.\gradlew.bat :app:assembleDebug :app:testDebugUnitTest :app:lintDebug --no-daemon --no-configuration-cache
 ```
 
 APK после сборки: `android/app/build/outputs/apk/debug/app-debug.apk`.

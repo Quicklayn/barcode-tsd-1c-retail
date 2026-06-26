@@ -26,6 +26,19 @@ Gradle-командой:
 .\gradlew.bat :app:assembleDebug
 ```
 
+Быстрые проверки Android-клиента:
+
+```powershell
+.\gradlew.bat :app:testDebugUnitTest
+.\gradlew.bat :app:lintDebug
+```
+
+Полный локальный набор, совпадающий с GitHub Actions:
+
+```powershell
+.\gradlew.bat :app:assembleDebug :app:testDebugUnitTest :app:lintDebug --no-daemon --no-configuration-cache
+```
+
 Требования выбранной связки: JDK 17, Android SDK API 36. Gradle запускается
 через wrapper из каталога `android/`.
 
