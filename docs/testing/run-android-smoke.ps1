@@ -135,6 +135,53 @@ function Invoke-AndroidLookup {
     throw "Android smoke did not find expected text '$ExpectedText' for barcode '$Barcode'. UI dump: $dumpPath"
 }
 
+function Invoke-AndroidKeyboardLookup {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Barcode,
+
+        [Parameter(Mandatory = $true)]
+        [string]$ExpectedText
+    )
+
+    Invoke-Adb -Arguments @("shell", "am", "force-stop", "ru.local.barcodetsd") -Step "Stop Android app" | Out-Null
+    Invoke-Adb -Arguments @(
+        "shell",
+        "am",
+        "start",
+        "-n",
+        "ru.local.barcodetsd/.MainActivity",
+        "--es",
+        "ru.local.barcodetsd.extra.SERVICE_URL",
+        $ServiceUrl
+    ) -Step "Start Android keyboard smoke lookup" | Out-Null
+
+    Start-Sleep -Seconds 1
+    Invoke-Adb -Arguments @("shell", "input", "text", $Barcode) -Step "Type barcode through Android input" | Out-Null
+    Invoke-Adb -Arguments @("shell", "input", "keyevent", "ENTER") -Step "Submit barcode through Enter" | Out-Null
+
+    $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+    $lastDump = ""
+    while ((Get-Date) -lt $deadline) {
+        Start-Sleep -Seconds 1
+        $lastDump = Get-UiDump
+        if ($lastDump -like "*$ExpectedText*") {
+            Write-Host "Android keyboard smoke scenario passed: $Barcode -> $ExpectedText" -ForegroundColor Green
+            return
+        }
+
+        if ($lastDump -like "*Ошибка подключения*" -or
+            $lastDump -like "*Ошибка сервера*" -or
+            $lastDump -like "*Ошибка авторизации*") {
+            break
+        }
+    }
+
+    $dumpPath = Join-Path $env:TEMP "BarcodeTSD_android_keyboard_ui_dump_$Barcode.xml"
+    $lastDump | Set-Content -LiteralPath $dumpPath -Encoding UTF8
+    throw "Android keyboard smoke did not find expected text '$ExpectedText' for barcode '$Barcode'. UI dump: $dumpPath"
+}
+
 $script:Adb = Resolve-AdbPath -ExplicitPath $AdbPath
 $androidDir = Join-Path $RepoRoot "android"
 $gradle = Join-Path $RepoRoot "android\gradlew.bat"
@@ -167,8 +214,9 @@ if ($ClearAppData) {
     Invoke-Adb -Arguments @("shell", "pm", "clear", "ru.local.barcodetsd") -Step "Clear app data" | Out-Null
 }
 
+Invoke-AndroidKeyboardLookup -Barcode $FoundBarcode -ExpectedText $FoundText
 Invoke-AndroidLookup -Barcode $FoundBarcode -ExpectedText $FoundText
 Invoke-AndroidLookup -Barcode $NotFoundBarcode -ExpectedText $NotFoundText
 Invoke-AndroidLookup -Barcode $AmbiguousBarcode -ExpectedText $AmbiguousText
 
-Write-Host "Android smoke passed: found, not_found, ambiguous" -ForegroundColor Green
+Write-Host "Android smoke passed: keyboard found, found, not_found, ambiguous" -ForegroundColor Green

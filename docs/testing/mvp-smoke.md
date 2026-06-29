@@ -42,7 +42,8 @@
 ```
 
 Android-smoke запускает приложение через ADB и проверяет на экране `found`,
-`not_found` и `ambiguous`.
+`not_found` и `ambiguous`. Для найденного товара он также вводит штрихкод через
+`adb shell input text` и отправляет `ENTER`, имитируя keyboard wedge scanner.
 
 Для автоматического определения порта backend-публикации используйте
 `run-full-mvp-smoke.ps1`.

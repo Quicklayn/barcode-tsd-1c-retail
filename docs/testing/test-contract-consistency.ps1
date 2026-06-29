@@ -191,6 +191,10 @@ Assert-Contains `
     -Description "Android smoke must cover found scenario."
 Assert-Contains `
     -Text $androidSmoke `
+    -Expected "Invoke-AndroidKeyboardLookup" `
+    -Description "Android smoke must cover scanner-style Enter submission."
+Assert-Contains `
+    -Text $androidSmoke `
     -Expected "NotFoundBarcode" `
     -Description "Android smoke must cover not_found scenario."
 Assert-Contains `
