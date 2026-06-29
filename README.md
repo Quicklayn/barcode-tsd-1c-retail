@@ -13,7 +13,7 @@ MVP мобильного приложения для ТСД на Android и ра
 - `android/` — native Kotlin/Gradle Android-приложение, `minSdk=26`;
 - `extension/` — расширение 1С `BarcodeTSD` с HTTP-сервисом;
 - `docs/api/` — OpenAPI-контракт между Android и 1С;
-- `openspec/` — спецификации и change `tsd-barcode-lookup`;
+- `openspec/` — спецификации OpenSpec и архив изменений;
 - `.codex/` — правила, навыки и субагенты для AI-разработки 1С.
 
 ## Важное про `RT3/`
@@ -65,6 +65,12 @@ APK после сборки: `android/app/build/outputs/apk/debug/app-debug.apk`
 
 GitHub Actions также сохраняет APK в artifact `barcode-tsd-debug-apk`, а
 отчеты проверки — в `android-verification-reports`.
+
+Дополнительно в GitHub Actions выполняются:
+
+- `OpenSpec` — строгая проверка `openspec/**`;
+- `Smoke Scripts` — синтаксис PowerShell smoke-скриптов и сверка контрактов
+  между OpenAPI, OpenSpec, backend-обработчиком и smoke-проверками.
 
 Для эмулятора URL по умолчанию:
 `http://10.0.2.2:8081/retailtest/hs/BarcodeTSD`. Для физического ТСД укажите в
