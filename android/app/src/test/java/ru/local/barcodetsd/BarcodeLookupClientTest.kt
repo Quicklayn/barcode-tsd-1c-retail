@@ -7,6 +7,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import org.json.JSONObject
 import java.net.InetSocketAddress
 import java.nio.charset.StandardCharsets
 import java.util.Base64
@@ -109,6 +110,17 @@ class BarcodeLookupClientTest {
     }
 
     @Test
+    fun resolveMapsHttp403ToAuthError() {
+        enqueueResponse(403, """{"message":"Доступ запрещен"}""")
+
+        val result = client.resolve(serviceUrl, "", "", "1")
+
+        assertTrue(result is LookupResult.AuthError)
+        result as LookupResult.AuthError
+        assertEquals("Доступ запрещен", result.message)
+    }
+
+    @Test
     fun resolveMapsHttp500ToServerError() {
         enqueueResponse(500, """{"message":"Ошибка 1С"}""")
 
@@ -126,6 +138,47 @@ class BarcodeLookupClientTest {
         val result = client.resolve(serviceUrl, "", "", "1")
 
         assertTrue(result is LookupResult.ServerError)
+    }
+
+    @Test
+    fun resolveMapsFoundWithoutNameToServerError() {
+        enqueueResponse(
+            200,
+            """{"status":"found","barcode":"1","matches":[{"itemRef":"item-1"}]}"""
+        )
+
+        val result = client.resolve(serviceUrl, "", "", "1")
+
+        assertTrue(result is LookupResult.ServerError)
+        result as LookupResult.ServerError
+        assertEquals("1С вернула found без наименования товара.", result.message)
+    }
+
+    @Test
+    fun resolveMapsUnknownStatusToServerError() {
+        enqueueResponse(
+            200,
+            """{"status":"unexpected","barcode":"1","matches":[]}"""
+        )
+
+        val result = client.resolve(serviceUrl, "", "", "1")
+
+        assertTrue(result is LookupResult.ServerError)
+        result as LookupResult.ServerError
+        assertEquals("1С вернула неизвестный статус: unexpected.", result.message)
+    }
+
+    @Test
+    fun resolveSendsOnlyBarcodeInRequestBody() {
+        enqueueResponse(
+            200,
+            """{"status":"found","barcode":"4600000000011","matches":[{"itemRef":"item-1","name":"Товар"}]}""",
+            expectedBarcode = "4600000000011"
+        )
+
+        val result = client.resolve(serviceUrl, "user", "secret", "4600000000011")
+
+        assertTrue(result is LookupResult.Found)
     }
 
     @Test
@@ -154,8 +207,27 @@ class BarcodeLookupClientTest {
         assertTrue(result is LookupResult.Found)
     }
 
-    private fun enqueueResponse(code: Int, body: String, expectedAuth: String? = null) {
-        server.createContext("/retail/hs/BarcodeTSD/v1/barcode/resolve") { exchange ->
+    @Test
+    fun resolveAcceptsProductLookupBaseUrlWithoutDuplicatingSuffix() {
+        enqueueResponse(
+            200,
+            """{"status":"found","barcode":"1","matches":[{"itemRef":"item-1","name":"Товар"}]}""",
+            path = "/retail/hs/BarcodeTSD/ProductLookup/v1/barcode/resolve"
+        )
+
+        val result = client.resolve("$serviceUrl/ProductLookup", "", "", "1")
+
+        assertTrue(result is LookupResult.Found)
+    }
+
+    private fun enqueueResponse(
+        code: Int,
+        body: String,
+        expectedAuth: String? = null,
+        expectedBarcode: String? = null,
+        path: String = "/retail/hs/BarcodeTSD/v1/barcode/resolve"
+    ) {
+        server.createContext(path) { exchange ->
             assertEquals("POST", exchange.requestMethod)
             if (expectedAuth != null) {
                 assertEquals(expectedAuth, exchange.requestHeaders.getFirst("Authorization"))
@@ -164,6 +236,11 @@ class BarcodeLookupClientTest {
                 String(input.readBytes(), StandardCharsets.UTF_8)
             }
             assertTrue(requestBody.contains("\"barcode\""))
+            if (expectedBarcode != null) {
+                val requestJson = JSONObject(requestBody)
+                assertEquals(1, requestJson.length())
+                assertEquals(expectedBarcode, requestJson.getString("barcode"))
+            }
             writeResponse(exchange, code, body)
         }
     }
