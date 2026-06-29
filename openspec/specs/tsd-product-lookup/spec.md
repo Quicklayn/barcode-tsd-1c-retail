@@ -51,6 +51,30 @@ The 1C backend MUST resolve product barcodes for this MVP using
 - WHEN the backend resolves the barcode
 - THEN the backend does not use that catalog in this MVP.
 
+### Requirement: Barcode Request Validation
+
+The 1C backend MUST accept only the minimal barcode lookup request shape
+defined by `docs/api/tsd-api.yaml`.
+
+#### Scenario: Request contains extra fields
+
+- GIVEN a request JSON object contains `barcode`
+- AND the same request contains any extra top-level field
+- WHEN the backend validates the request
+- THEN the backend rejects it with `400 invalid_request`.
+
+#### Scenario: Request contains malformed JSON
+
+- GIVEN a request body is not valid JSON
+- WHEN the backend validates the request
+- THEN the backend rejects it with `400 invalid_request`.
+
+#### Scenario: Barcode is too long
+
+- GIVEN a request contains a `barcode` longer than 200 characters
+- WHEN the backend validates the request
+- THEN the backend rejects it with `400 invalid_request`.
+
 ### Requirement: Android Scanner Baseline
 
 The Android MVP MUST support scanner input through keyboard wedge mode and MUST
