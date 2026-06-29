@@ -1,5 +1,10 @@
 # TSD Product Name Lookup
 
+## Purpose
+
+Define the MVP behavior for online barcode lookup from an Android TSD against
+the 1C:Retail backend, limited to resolving and displaying the product name.
+
 ## Requirements
 
 ### Requirement: Online Product Name Lookup
