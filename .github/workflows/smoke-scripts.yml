@@ -36,3 +36,7 @@ jobs:
               Write-Error "PowerShell syntax errors in $($file.FullName): $($errors | Out-String)"
             }
           }
+
+      - name: Check contract consistency
+        shell: powershell
+        run: .\docs\testing\test-contract-consistency.ps1
