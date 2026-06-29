@@ -33,7 +33,7 @@ class BarcodeLookupClientTest {
     fun resolveReturnsFoundProductName() {
         enqueueResponse(
             200,
-            """{"status":"found","barcode":"4600000000011","matches":[{"name":"Товар 1"}]}"""
+            """{"status":"found","barcode":"4600000000011","matches":[{"itemRef":"item-1","name":"Товар 1"}]}"""
         )
 
         val result = client.resolve(serviceUrl, "", "", "4600000000011")
@@ -63,7 +63,7 @@ class BarcodeLookupClientTest {
     fun resolveReturnsAmbiguousNames() {
         enqueueResponse(
             200,
-            """{"status":"ambiguous","barcode":"22","matches":[{"name":"Товар A"},{"name":"Товар B"}]}"""
+            """{"status":"ambiguous","barcode":"22","matches":[{"itemRef":"item-a","name":"Товар A"},{"itemRef":"item-b","name":"Товар B"}]}"""
         )
 
         val result = client.resolve(serviceUrl, "", "", "22")
@@ -90,7 +90,7 @@ class BarcodeLookupClientTest {
             .encodeToString("user:secret".toByteArray(StandardCharsets.UTF_8))
         enqueueResponse(
             200,
-            """{"status":"found","barcode":"1","matches":[{"name":"Товар"}]}""",
+            """{"status":"found","barcode":"1","matches":[{"itemRef":"item-1","name":"Товар"}]}""",
             expectedAuth
         )
 
@@ -146,7 +146,7 @@ class BarcodeLookupClientTest {
     fun resolveAcceptsFullEndpointUrl() {
         enqueueResponse(
             200,
-            """{"status":"found","barcode":"1","matches":[{"name":"Товар"}]}"""
+            """{"status":"found","barcode":"1","matches":[{"itemRef":"item-1","name":"Товар"}]}"""
         )
 
         val result = client.resolve("$serviceUrl/v1/barcode/resolve", "", "", "1")
