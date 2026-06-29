@@ -93,3 +93,9 @@ Backend + Android smoke на эмуляторе:
 ```
 
 Android-smoke проверяет UI-сценарии `found`, `not_found` и `ambiguous`.
+
+Полный автоматический smoke одной командой:
+
+```powershell
+.\docs\testing\run-full-mvp-smoke.ps1
+```

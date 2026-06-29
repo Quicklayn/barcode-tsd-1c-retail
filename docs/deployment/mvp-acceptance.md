@@ -80,6 +80,12 @@ http://10.0.2.2:8081/retailtest/hs/BarcodeTSD
 .\docs\testing\run-android-smoke.ps1
 ```
 
+То же одной командой с автоматическим определением порта публикации:
+
+```powershell
+.\docs\testing\run-full-mvp-smoke.ps1
+```
+
 Этот smoke проверяет отображение найденного товара, состояние `Не найдено` и
 неоднозначный список.
 
