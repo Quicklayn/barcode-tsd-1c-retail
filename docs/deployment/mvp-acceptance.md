@@ -73,6 +73,19 @@ http://10.0.2.2:8081/retailtest/hs/BarcodeTSD
 
 Для физического ТСД используйте сетевой адрес сервера 1С, доступный с ТСД.
 
+Автоматизированный smoke на подключенном эмуляторе или ТСД:
+
+```powershell
+.\docs\testing\run-mvp-smoke.ps1 -KeepWebServer
+.\docs\testing\run-android-smoke.ps1
+```
+
+Для физического ТСД передайте реальный URL публикации:
+
+```powershell
+.\docs\testing\run-android-smoke.ps1 -ServiceUrl "http://server/infobase/hs/BarcodeTSD"
+```
+
 ## 5. Ручная приемка
 
 Проверить в приложении:

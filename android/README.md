@@ -57,3 +57,9 @@ adb shell am start -n ru.local.barcodetsd/.MainActivity
 `http://10.0.2.2:8081/retailtest/hs/BarcodeTSD` в приложении на эмуляторе.
 Если debug-приложение уже запускалось со старым URL, измените поле URL вручную
 или очистите данные приложения.
+
+Для автоматизированного smoke после `run-mvp-smoke.ps1 -KeepWebServer`:
+
+```powershell
+..\docs\testing\run-android-smoke.ps1
+```

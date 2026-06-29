@@ -84,3 +84,10 @@ APK после сборки: `android/app/build/outputs/apk/debug/app-debug.apk`
 ```powershell
 .\docs\testing\run-mvp-smoke.ps1 -V8Path "C:\Program Files\1cv8\8.3.27.2130\bin"
 ```
+
+Backend + Android smoke на эмуляторе:
+
+```powershell
+.\docs\testing\run-mvp-smoke.ps1 -KeepWebServer
+.\docs\testing\run-android-smoke.ps1
+```

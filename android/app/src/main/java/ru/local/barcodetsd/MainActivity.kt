@@ -1,6 +1,7 @@
 package ru.local.barcodetsd
 
 import android.app.Activity
+import android.content.Intent
 import android.content.SharedPreferences
 import android.graphics.Typeface
 import android.os.Bundle
@@ -45,6 +46,13 @@ class MainActivity : Activity() {
         bindActions()
         showIdle()
         barcodeInput.requestFocus()
+        applyLaunchExtras(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        applyLaunchExtras(intent)
     }
 
     override fun onDestroy() {
@@ -139,6 +147,27 @@ class MainActivity : Activity() {
             } else {
                 false
             }
+        }
+    }
+
+    private fun applyLaunchExtras(intent: Intent?) {
+        if (intent == null) {
+            return
+        }
+
+        val serviceUrl = intent.getStringExtra(EXTRA_SERVICE_URL)
+        if (!serviceUrl.isNullOrBlank()) {
+            serviceUrlInput.setText(serviceUrl)
+        }
+
+        val barcode = intent.getStringExtra(EXTRA_BARCODE)
+        if (!barcode.isNullOrBlank()) {
+            barcodeInput.setText(barcode)
+            barcodeInput.selectAll()
+        }
+
+        if (intent.getBooleanExtra(EXTRA_AUTO_LOOKUP, false)) {
+            mainHandler.post { startLookup() }
         }
     }
 
@@ -291,4 +320,10 @@ class MainActivity : Activity() {
 
     private fun dp(value: Int): Int =
         (value * resources.displayMetrics.density).toInt()
+
+    private companion object {
+        private const val EXTRA_SERVICE_URL = "ru.local.barcodetsd.extra.SERVICE_URL"
+        private const val EXTRA_BARCODE = "ru.local.barcodetsd.extra.BARCODE"
+        private const val EXTRA_AUTO_LOOKUP = "ru.local.barcodetsd.extra.AUTO_LOOKUP"
+    }
 }
