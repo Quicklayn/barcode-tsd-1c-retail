@@ -28,6 +28,7 @@ jobs:
       - name: Parse smoke scripts
         shell: powershell
         run: |
+          $ErrorActionPreference = "Stop"
           $files = Get-ChildItem -LiteralPath docs\testing -Filter *.ps1 -Recurse
           foreach ($file in $files) {
             $errors = $null
@@ -39,7 +40,7 @@ jobs:
             ) > $null
 
             if ($errors.Count -gt 0) {
-              Write-Error "PowerShell syntax errors in $($file.FullName): $($errors | Out-String)"
+              throw "PowerShell syntax errors in $($file.FullName): $($errors | Out-String)"
             }
           }
 
