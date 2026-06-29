@@ -4,10 +4,16 @@ on:
   push:
     paths:
       - "docs/testing/**/*.ps1"
+      - "docs/api/**"
+      - "openspec/specs/**"
+      - "extension/src/HTTPServices/BarcodeTSD/**"
       - ".github/workflows/smoke-scripts.yml"
   pull_request:
     paths:
       - "docs/testing/**/*.ps1"
+      - "docs/api/**"
+      - "openspec/specs/**"
+      - "extension/src/HTTPServices/BarcodeTSD/**"
       - ".github/workflows/smoke-scripts.yml"
 
 jobs:
