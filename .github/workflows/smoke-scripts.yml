@@ -9,6 +9,7 @@ on:
       - "extension/src/Configuration.xml"
       - "extension/src/HTTPServices/BarcodeTSD.xml"
       - "extension/src/HTTPServices/BarcodeTSD/**"
+      - "extension/src/Roles/**"
       - ".github/workflows/smoke-scripts.yml"
   pull_request:
     paths:
@@ -18,6 +19,7 @@ on:
       - "extension/src/Configuration.xml"
       - "extension/src/HTTPServices/BarcodeTSD.xml"
       - "extension/src/HTTPServices/BarcodeTSD/**"
+      - "extension/src/Roles/**"
       - ".github/workflows/smoke-scripts.yml"
 
 jobs:

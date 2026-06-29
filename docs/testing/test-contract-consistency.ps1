@@ -75,9 +75,37 @@ function Assert-Equals {
     }
 }
 
+function Assert-RoleRight {
+    param(
+        [Parameter(Mandatory = $true)]
+        [xml]$Xml,
+
+        [Parameter(Mandatory = $true)]
+        [System.Xml.XmlNamespaceManager]$NamespaceManager,
+
+        [Parameter(Mandatory = $true)]
+        [string]$ObjectName,
+
+        [Parameter(Mandatory = $true)]
+        [string]$RightName
+    )
+
+    $xpath = "//roles:object[roles:name='$ObjectName']/roles:right[roles:name='$RightName']/roles:value"
+    Assert-Equals `
+        -Actual (Select-RequiredXmlText `
+            -Xml $Xml `
+            -NamespaceManager $NamespaceManager `
+            -XPath $xpath `
+            -Description "Role BarcodeTSD_Use must define $RightName for $ObjectName.") `
+        -Expected "true" `
+        -Description "Role BarcodeTSD_Use must allow $RightName for $ObjectName."
+}
+
+$configuration = Read-ProjectFile -RelativePath "extension\src\Configuration.xml"
 $openApi = Read-ProjectFile -RelativePath "docs\api\tsd-api.yaml"
 $spec = Read-ProjectFile -RelativePath "openspec\specs\tsd-product-lookup\spec.md"
 $httpServiceXmlText = Read-ProjectFile -RelativePath "extension\src\HTTPServices\BarcodeTSD.xml"
+$roleRightsXmlText = Read-ProjectFile -RelativePath "extension\src\Roles\BarcodeTSD_Use\Ext\Rights.xml"
 $backend = Read-ProjectFile -RelativePath "extension\src\HTTPServices\BarcodeTSD\Ext\Module.bsl"
 $androidClient = Read-ProjectFile -RelativePath "android\app\src\main\java\ru\local\barcodetsd\BarcodeLookupClient.kt"
 $backendSmoke = Read-ProjectFile -RelativePath "docs\testing\run-mvp-smoke.ps1"
@@ -86,6 +114,10 @@ $androidSmoke = Read-ProjectFile -RelativePath "docs\testing\run-android-smoke.p
 [xml]$httpServiceXml = $httpServiceXmlText
 $namespaceManager = New-Object System.Xml.XmlNamespaceManager($httpServiceXml.NameTable)
 $namespaceManager.AddNamespace("md", "http://v8.1c.ru/8.3/MDClasses")
+
+[xml]$roleRightsXml = $roleRightsXmlText
+$roleNamespaceManager = New-Object System.Xml.XmlNamespaceManager($roleRightsXml.NameTable)
+$roleNamespaceManager.AddNamespace("roles", "http://v8.1c.ru/8.2/roles")
 
 Assert-Equals `
     -Actual (Select-RequiredXmlText `
@@ -119,6 +151,16 @@ Assert-Equals `
         -Description "HTTP service handler must exist.") `
     -Expected "BarcodeResolve" `
     -Description "HTTP service handler must stay BarcodeResolve."
+
+Assert-Contains `
+    -Text $configuration `
+    -Expected "<Role>BarcodeTSD_Use</Role>" `
+    -Description "BarcodeTSD_Use role must be registered in the extension configuration."
+Assert-RoleRight -Xml $roleRightsXml -NamespaceManager $roleNamespaceManager -ObjectName "HTTPService.BarcodeTSD" -RightName "Use"
+Assert-RoleRight -Xml $roleRightsXml -NamespaceManager $roleNamespaceManager -ObjectName "InformationRegister.ШтрихкодыНоменклатуры" -RightName "Read"
+Assert-RoleRight -Xml $roleRightsXml -NamespaceManager $roleNamespaceManager -ObjectName "InformationRegister.ШтрихкодыНоменклатуры" -RightName "View"
+Assert-RoleRight -Xml $roleRightsXml -NamespaceManager $roleNamespaceManager -ObjectName "Catalog.Номенклатура" -RightName "Read"
+Assert-RoleRight -Xml $roleRightsXml -NamespaceManager $roleNamespaceManager -ObjectName "Catalog.Номенклатура" -RightName "View"
 
 Assert-Contains `
     -Text $openApi `

@@ -80,6 +80,18 @@ defined by `docs/api/tsd-api.yaml`.
 - WHEN the backend validates the request
 - THEN the backend rejects it with `400 invalid_request`.
 
+### Requirement: TSD Access Role
+
+The 1C extension MUST provide a minimal role for the TSD technical user.
+
+#### Scenario: Technical user has MVP lookup access
+
+- GIVEN the role `BarcodeTSD_Use` is assigned to the TSD technical user
+- WHEN the user calls the barcode lookup HTTP service
+- THEN the role allows use of `HTTPService.BarcodeTSD`
+- AND the role allows read access to `РегистрСведений.ШтрихкодыНоменклатуры`
+- AND the role allows read access to `Справочник.Номенклатура`.
+
 ### Requirement: Android Scanner Baseline
 
 The Android MVP MUST support scanner input through keyboard wedge mode and MUST
@@ -125,6 +137,8 @@ The Android MVP MUST display only the product name for a successful lookup.
 - Local metadata export: `РегистрСведений.ШтрихкодыНоменклатуры` confirms
   `Штрихкод` (Строка 200) and `Номенклатура`
   (`CatalogRef.Номенклатура`).
+- Local extension metadata: `extension/src/Roles/BarcodeTSD_Use/Ext/Rights.xml`
+  defines the minimal TSD HTTP lookup role.
 - Local BSL export: `РаботаСоШтрихкодами*` and
   `ОборудованиеТерминалыСбораДанных` confirm existing barcode/TSD patterns.
 - `docs/api/tsd-api.yaml` defines the minimal API contract shape.

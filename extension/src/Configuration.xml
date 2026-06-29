@@ -64,6 +64,7 @@
 		<ChildObjects>
 			<Language>Русский</Language>
 			<HTTPService>BarcodeTSD</HTTPService>
+			<Role>BarcodeTSD_Use</Role>
 		</ChildObjects>
 	</Configuration>
 </MetaDataObject>
