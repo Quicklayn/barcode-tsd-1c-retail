@@ -2,8 +2,12 @@
     [string]$RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path,
     [string]$AdbPath = "",
     [string]$ServiceUrl = "http://10.0.2.2:8081/retailtest/hs/BarcodeTSD",
-    [string]$Barcode = "2000000000035",
-    [string]$ExpectedName = "Тестовый товар MVP Found",
+    [string]$FoundBarcode = "2000000000035",
+    [string]$FoundText = "Тестовый товар MVP Found",
+    [string]$NotFoundBarcode = "0000000000000",
+    [string]$NotFoundText = "Не найдено",
+    [string]$AmbiguousBarcode = "2000000000042",
+    [string]$AmbiguousText = "Тестовый товар MVP Ambiguous 1",
     [int]$TimeoutSeconds = 30,
     [switch]$SkipBuild,
     [switch]$SkipInstall,
@@ -82,6 +86,55 @@ function Get-UiDump {
     return Invoke-Adb -Arguments @("exec-out", "cat", "/sdcard/window_dump.xml") -Step "Read Android UI dump"
 }
 
+function Invoke-AndroidLookup {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Barcode,
+
+        [Parameter(Mandatory = $true)]
+        [string]$ExpectedText
+    )
+
+    Invoke-Adb -Arguments @("shell", "am", "force-stop", "ru.local.barcodetsd") -Step "Stop Android app" | Out-Null
+    Invoke-Adb -Arguments @(
+        "shell",
+        "am",
+        "start",
+        "-n",
+        "ru.local.barcodetsd/.MainActivity",
+        "--es",
+        "ru.local.barcodetsd.extra.SERVICE_URL",
+        $ServiceUrl,
+        "--es",
+        "ru.local.barcodetsd.extra.BARCODE",
+        $Barcode,
+        "--ez",
+        "ru.local.barcodetsd.extra.AUTO_LOOKUP",
+        "true"
+    ) -Step "Start Android smoke lookup" | Out-Null
+
+    $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+    $lastDump = ""
+    while ((Get-Date) -lt $deadline) {
+        Start-Sleep -Seconds 1
+        $lastDump = Get-UiDump
+        if ($lastDump -like "*$ExpectedText*") {
+            Write-Host "Android smoke scenario passed: $Barcode -> $ExpectedText" -ForegroundColor Green
+            return
+        }
+
+        if ($lastDump -like "*Ошибка подключения*" -or
+            $lastDump -like "*Ошибка сервера*" -or
+            $lastDump -like "*Ошибка авторизации*") {
+            break
+        }
+    }
+
+    $dumpPath = Join-Path $env:TEMP "BarcodeTSD_android_ui_dump_$Barcode.xml"
+    $lastDump | Set-Content -LiteralPath $dumpPath -Encoding UTF8
+    throw "Android smoke did not find expected text '$ExpectedText' for barcode '$Barcode'. UI dump: $dumpPath"
+}
+
 $script:Adb = Resolve-AdbPath -ExplicitPath $AdbPath
 $androidDir = Join-Path $RepoRoot "android"
 $gradle = Join-Path $RepoRoot "android\gradlew.bat"
@@ -114,42 +167,8 @@ if ($ClearAppData) {
     Invoke-Adb -Arguments @("shell", "pm", "clear", "ru.local.barcodetsd") -Step "Clear app data" | Out-Null
 }
 
-Invoke-Adb -Arguments @("shell", "am", "force-stop", "ru.local.barcodetsd") -Step "Stop Android app" | Out-Null
-Invoke-Adb -Arguments @(
-    "shell",
-    "am",
-    "start",
-    "-n",
-    "ru.local.barcodetsd/.MainActivity",
-    "--es",
-    "ru.local.barcodetsd.extra.SERVICE_URL",
-    $ServiceUrl,
-    "--es",
-    "ru.local.barcodetsd.extra.BARCODE",
-    $Barcode,
-    "--ez",
-    "ru.local.barcodetsd.extra.AUTO_LOOKUP",
-    "true"
-) -Step "Start Android smoke lookup" | Out-Null
+Invoke-AndroidLookup -Barcode $FoundBarcode -ExpectedText $FoundText
+Invoke-AndroidLookup -Barcode $NotFoundBarcode -ExpectedText $NotFoundText
+Invoke-AndroidLookup -Barcode $AmbiguousBarcode -ExpectedText $AmbiguousText
 
-$deadline = (Get-Date).AddSeconds($TimeoutSeconds)
-$lastDump = ""
-while ((Get-Date) -lt $deadline) {
-    Start-Sleep -Seconds 1
-    $lastDump = Get-UiDump
-    if ($lastDump -like "*$ExpectedName*") {
-        Write-Host "Android smoke passed: $ExpectedName" -ForegroundColor Green
-        exit 0
-    }
-
-    if ($lastDump -like "*Ошибка подключения*" -or
-        $lastDump -like "*Ошибка сервера*" -or
-        $lastDump -like "*Ошибка авторизации*" -or
-        $lastDump -like "*Не найдено*") {
-        break
-    }
-}
-
-$dumpPath = Join-Path $env:TEMP "BarcodeTSD_android_ui_dump.xml"
-$lastDump | Set-Content -LiteralPath $dumpPath -Encoding UTF8
-throw "Android smoke did not find expected text '$ExpectedName'. UI dump: $dumpPath"
+Write-Host "Android smoke passed: found, not_found, ambiguous" -ForegroundColor Green

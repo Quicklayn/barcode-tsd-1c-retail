@@ -91,3 +91,5 @@ Backend + Android smoke на эмуляторе:
 .\docs\testing\run-mvp-smoke.ps1 -KeepWebServer
 .\docs\testing\run-android-smoke.ps1
 ```
+
+Android-smoke проверяет UI-сценарии `found`, `not_found` и `ambiguous`.
