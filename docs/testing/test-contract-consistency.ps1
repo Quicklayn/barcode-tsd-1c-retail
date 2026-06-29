@@ -57,6 +57,22 @@ Assert-Contains `
     -Text $backendSmoke `
     -Expected "`"extra`":1" `
     -Description "Backend smoke must cover extra-field rejection."
+Assert-Contains `
+    -Text $backendSmoke `
+    -Expected "-Body `"{}`"" `
+    -Description "Backend smoke must cover empty-object rejection."
+Assert-Contains `
+    -Text $backendSmoke `
+    -Expected "`"code`":`"2000000000035`"" `
+    -Description "Backend smoke must cover wrong-field rejection."
+Assert-Contains `
+    -Text $backendSmoke `
+    -Expected "`"barcode`":123" `
+    -Description "Backend smoke must cover non-string barcode rejection."
+Assert-Contains `
+    -Text $backendSmoke `
+    -Expected "-Body `"[]`"" `
+    -Description "Backend smoke must cover root-array rejection."
 
 foreach ($status in @("found", "not_found", "ambiguous")) {
     Assert-Contains `

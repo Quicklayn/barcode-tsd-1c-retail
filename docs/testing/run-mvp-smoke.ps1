@@ -327,6 +327,11 @@ try {
     $url = "$rootUrl/hs/BarcodeTSD/v1/barcode/resolve"
     $results = @(
         Assert-RawBarcodeResponse -Url $url -Body "{" -ExpectedCode 400 -ExpectedError "invalid_request"
+        Assert-RawBarcodeResponse -Url $url -Body "{}" -ExpectedCode 400 -ExpectedError "invalid_request"
+        Assert-RawBarcodeResponse -Url $url -Body '{"code":"2000000000035"}' -ExpectedCode 400 -ExpectedError "invalid_request"
+        Assert-RawBarcodeResponse -Url $url -Body '{"barcode":123}' -ExpectedCode 400 -ExpectedError "invalid_request"
+        Assert-RawBarcodeResponse -Url $url -Body "[]" -ExpectedCode 400 -ExpectedError "invalid_request"
+        Assert-RawBarcodeResponse -Url $url -Body '"2000000000035"' -ExpectedCode 400 -ExpectedError "invalid_request"
         Assert-RawBarcodeResponse `
             -Url $url `
             -Body '{"barcode":"2000000000035","extra":1}' `
