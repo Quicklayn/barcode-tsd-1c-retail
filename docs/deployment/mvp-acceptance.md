@@ -58,6 +58,10 @@ Android-клиент сам добавляет путь `/v1/barcode/resolve`.
 .\gradlew.bat :app:assembleDebug :app:testDebugUnitTest :app:lintDebug --no-daemon --no-configuration-cache
 ```
 
+В GitHub Actions debug APK сохраняется как artifact `barcode-tsd-debug-apk`.
+Отчеты `lintDebug` и `testDebugUnitTest` сохраняются как
+`android-verification-reports`.
+
 Установить debug APK:
 
 ```powershell

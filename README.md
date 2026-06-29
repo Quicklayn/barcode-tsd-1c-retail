@@ -63,6 +63,9 @@ cd android
 
 APK после сборки: `android/app/build/outputs/apk/debug/app-debug.apk`.
 
+GitHub Actions также сохраняет APK в artifact `barcode-tsd-debug-apk`, а
+отчеты проверки — в `android-verification-reports`.
+
 Для эмулятора URL по умолчанию:
 `http://10.0.2.2:8081/retailtest/hs/BarcodeTSD`. Для физического ТСД укажите в
 приложении реальный адрес web-публикации 1С.
