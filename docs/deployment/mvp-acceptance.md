@@ -52,6 +52,19 @@ Android-клиент сам добавляет путь `/v1/barcode/resolve`.
 Если приложение получает `401` или `403`, сначала проверьте пользователя,
 пароль и права этого пользователя в ИБ.
 
+Минимальная проверка роли на стенде:
+
+```powershell
+curl.exe -i -u "tsd_user:password" -X POST `
+  -H "Content-Type: application/json" `
+  --data '{"barcode":"0000000000000"}' `
+  "http://server/infobase/hs/BarcodeTSD/v1/barcode/resolve"
+```
+
+Ожидаемый результат для неизвестного штрихкода - `200 not_found`. Ответ `401`
+или `403` означает, что пользователь не прошел аутентификацию или ему не хватает
+роли `BarcodeTSD_Use`.
+
 ## 4. Android verification
 
 В каталоге `android/`:
