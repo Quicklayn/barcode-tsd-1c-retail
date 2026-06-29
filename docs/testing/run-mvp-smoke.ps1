@@ -165,6 +165,39 @@ function Assert-BarcodeResponse {
     }
 }
 
+function Assert-RawBarcodeResponse {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Url,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Body,
+
+        [Parameter(Mandatory = $true)]
+        [int]$ExpectedCode,
+
+        [string]$ExpectedError = ""
+    )
+
+    $response = Invoke-SmokeRequest -Url $Url -Body $Body
+
+    if ($response.StatusCode -ne $ExpectedCode) {
+        throw "Raw request returned HTTP $($response.StatusCode), expected $ExpectedCode. Body: $($response.Content)"
+    }
+
+    $json = $response.Content | ConvertFrom-Json
+    if ($ExpectedError -and $json.error -ne $ExpectedError) {
+        throw "Raw request returned error '$($json.error)', expected '$ExpectedError'."
+    }
+
+    [pscustomobject]@{
+        Barcode = "<raw>"
+        HttpCode = $response.StatusCode
+        Status = $json.status
+        MatchCount = 0
+    }
+}
+
 function Publish-SmokeWeb {
     param(
         [Parameter(Mandatory = $true)]
@@ -293,7 +326,9 @@ try {
     $rootUrl = "http://localhost:$publishedPort/$($AppName.ToLowerInvariant())"
     $url = "$rootUrl/hs/BarcodeTSD/v1/barcode/resolve"
     $results = @(
+        Assert-RawBarcodeResponse -Url $url -Body "{" -ExpectedCode 400 -ExpectedError "invalid_request"
         Assert-BarcodeResponse -Url $url -Barcode "" -ExpectedCode 400 -ExpectedError "invalid_request"
+        Assert-BarcodeResponse -Url $url -Barcode ("9" * 201) -ExpectedCode 400 -ExpectedError "invalid_request"
         Assert-BarcodeResponse -Url $url -Barcode "0000000000000" -ExpectedCode 200 -ExpectedStatus "not_found"
         Assert-BarcodeResponse -Url $url -Barcode "2000000000035" -ExpectedCode 200 -ExpectedStatus "found" -ExpectedName "Тестовый товар MVP Found"
         Assert-BarcodeResponse -Url $url -Barcode "2000000000042" -ExpectedCode 200 -ExpectedStatus "ambiguous" -ExpectedName "Тестовый товар MVP Ambiguous 1"

@@ -125,7 +125,9 @@ curl.exe -i -X POST -H "Content-Type: application/json" `
 
 Ожидаемо:
 
+- битый JSON -> `400 invalid_request`;
 - пустой штрихкод -> `400 invalid_request`;
+- штрихкод длиннее 200 символов -> `400 invalid_request`;
 - отсутствующий штрихкод -> `200 not_found`.
 - `2000000000035` -> `200 found`, `Тестовый товар MVP Found`.
 - `2000000000042` -> `200 ambiguous`, две позиции
