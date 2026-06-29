@@ -8,7 +8,7 @@ servers:
     description: Local 1C web publication for the BarcodeTSD HTTP service
     variables:
       infobase:
-        default: RetailTest
+        default: retailtest
 paths:
   /v1/barcode/resolve:
     post:
