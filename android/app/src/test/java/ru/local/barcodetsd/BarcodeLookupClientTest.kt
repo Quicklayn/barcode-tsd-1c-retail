@@ -4,6 +4,7 @@ import com.sun.net.httpserver.HttpExchange
 import com.sun.net.httpserver.HttpServer
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -44,6 +45,33 @@ class BarcodeLookupClientTest {
         assertEquals("4600000000011", result.barcode)
         assertEquals("item-1", result.itemRef)
         assertEquals("Товар 1", result.name)
+        assertEquals(LookupSource.ONLINE, result.source)
+    }
+
+    @Test
+    fun foundResultDistinguishesOnlineAndCachedSources() {
+        val online = LookupResult.Found("1", "item-1", "Товар", LookupSource.ONLINE)
+        val cached = LookupResult.Found("1", "item-1", "Товар", LookupSource.CACHED)
+
+        assertEquals(LookupSource.ONLINE, online.source)
+        assertEquals(LookupSource.CACHED, cached.source)
+    }
+
+    @Test
+    fun onlyConnectionErrorAllowsCachedFallback() {
+        val resultsWithoutFallback = listOf(
+            LookupResult.Found("1", "item-1", "Товар"),
+            LookupResult.NotFound("1", null),
+            LookupResult.Ambiguous("1", listOf("Товар A", "Товар B")),
+            LookupResult.InvalidInput("Некорректный запрос"),
+            LookupResult.AuthError("Нет доступа"),
+            LookupResult.ServerError("Ошибка ответа сервера")
+        )
+
+        resultsWithoutFallback.forEach { result ->
+            assertFalse(result.allowsCachedFallback())
+        }
+        assertTrue(LookupResult.ConnectionError("Нет соединения").allowsCachedFallback())
     }
 
     @Test

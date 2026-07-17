@@ -13,8 +13,18 @@ import java.net.URL
 import java.nio.charset.StandardCharsets
 import java.util.Base64
 
+internal enum class LookupSource {
+    ONLINE,
+    CACHED
+}
+
 internal sealed class LookupResult {
-    data class Found(val barcode: String, val itemRef: String, val name: String) : LookupResult()
+    data class Found(
+        val barcode: String,
+        val itemRef: String,
+        val name: String,
+        val source: LookupSource = LookupSource.ONLINE
+    ) : LookupResult()
     data class NotFound(val barcode: String, val message: String?) : LookupResult()
     data class Ambiguous(val barcode: String, val names: List<String>) : LookupResult()
     data class InvalidInput(val message: String) : LookupResult()
@@ -101,7 +111,12 @@ internal class BarcodeLookupClient {
                 if (itemRef.isBlank() || name.isBlank()) {
                     LookupResult.ServerError("1С вернула found без ссылки или наименования товара.")
                 } else {
-                    LookupResult.Found(barcode, itemRef, name)
+                    LookupResult.Found(
+                        barcode = barcode,
+                        itemRef = itemRef,
+                        name = name,
+                        source = LookupSource.ONLINE
+                    )
                 }
             }
             "not_found" -> LookupResult.NotFound(
@@ -168,3 +183,6 @@ internal class BarcodeLookupClient {
         private const val READ_TIMEOUT_MS = 15_000
     }
 }
+
+internal fun LookupResult.allowsCachedFallback(): Boolean =
+    this is LookupResult.ConnectionError

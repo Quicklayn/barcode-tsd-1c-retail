@@ -1,4 +1,6 @@
 <resources>
     <string name="app_name">Barcode TSD</string>
     <string name="default_service_url">http://10.0.2.2:8081/retailtest/hs/BarcodeTSD</string>
+    <string name="cached_lookup_status">Добавлено из кеша</string>
+    <string name="cached_lookup_detail">Товар добавлен из локального кеша; 1С недоступна.</string>
 </resources>

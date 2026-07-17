@@ -4,9 +4,7 @@
 
 Define the MVP behavior for online barcode lookup from an Android TSD against
 the 1C:Retail backend, limited to resolving and displaying the product name.
-
 ## Requirements
-
 ### Requirement: Online Product Name Lookup
 
 The system MUST allow an Android TSD user to submit one scanned barcode and
@@ -109,17 +107,6 @@ also allow manual input for testing.
 - WHEN the user manually enters a barcode and submits it
 - THEN the app sends the barcode to the 1C lookup endpoint.
 
-### Requirement: Online-Only MVP
-
-The MVP MUST be online-only and MUST NOT use an offline product cache.
-
-#### Scenario: 1C server is unavailable
-
-- GIVEN the Android TSD cannot reach the 1C HTTP publication
-- WHEN the user scans a barcode
-- THEN the app displays a connection error state
-- AND the app does not attempt offline lookup.
-
 ### Requirement: Minimal Result Surface
 
 The Android MVP MUST display only the product name for a successful lookup.
@@ -131,6 +118,47 @@ The Android MVP MUST display only the product name for a successful lookup.
 - THEN the visible product result contains the product name
 - AND the app does not display stock, price, package, characteristic, or series
   data.
+
+### Requirement: Successful Product Lookup Cache
+The Android application MUST persist the normalized barcode, 1C `itemRef`, and product name after every unambiguous successful online lookup and MUST replace the cached row when a later successful lookup resolves the same barcode.
+
+#### Scenario: Online product is cached
+- **WHEN** 1C returns one `found` product for a normalized barcode
+- **THEN** the application persists that barcode, `itemRef`, and product name before presenting the successful result
+
+#### Scenario: Online product mapping changes
+- **WHEN** a later successful online lookup returns different product data for an already cached barcode
+- **THEN** the application replaces the cached product data with the latest successful response
+
+### Requirement: Cached Connection-Failure Fallback
+The Android application MUST attempt local product lookup only after a network connection failure and MUST keep all authoritative 1C responses visible without cache substitution.
+
+#### Scenario: Connection fails and barcode is cached
+- **WHEN** the online request ends with a connection failure and the normalized barcode exists in the local cache
+- **THEN** the application returns the cached `itemRef` and product name as a successful result marked as cached
+
+#### Scenario: Connection fails and barcode is not cached
+- **WHEN** the online request ends with a connection failure and the normalized barcode is absent from the local cache
+- **THEN** the application displays the original connection error and does not report a product
+
+#### Scenario: Authoritative response is not successful
+- **WHEN** 1C returns `not_found`, `ambiguous`, an authentication error, or a server/protocol error
+- **THEN** the application displays that result and does not replace it with cached data
+
+### Requirement: Durable Compatible Cache Storage
+The Android application MUST retain cached products across process restarts and MUST migrate an existing version-1 Room database to the cache-enabled schema without losing the active collection session or its lines.
+
+#### Scenario: Application restarts after caching a product
+- **WHEN** a cached product exists and the application process restarts
+- **THEN** the same barcode can be resolved from the local cache after a connection failure
+
+#### Scenario: Existing collection database is upgraded
+- **WHEN** the application first opens an existing version-1 database after the update
+- **THEN** Room migrates it to version 2 and preserves the session header, state, lines, quantities, and document reference
+
+#### Scenario: Cached product has not been refreshed
+- **WHEN** no later successful online lookup occurs for a cached barcode
+- **THEN** the application retains the cached row until application data is cleared
 
 ## Context sources
 

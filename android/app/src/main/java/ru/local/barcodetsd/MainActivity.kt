@@ -309,13 +309,28 @@ class MainActivity : Activity() {
                     barcode
                 )
                 try {
-                    if (lookupResult is LookupResult.Found) {
-                        updatedSession = repository.addResolvedProduct(
-                            session.sessionId,
+                    when {
+                        lookupResult is LookupResult.Found -> {
+                            updatedSession = repository.addResolvedProduct(
+                                session.sessionId,
+                                lookupResult
+                            )
                             lookupResult
-                        )
+                        }
+                        lookupResult.allowsCachedFallback() -> {
+                            val cached = repository.resolveCachedProduct(
+                                session.sessionId,
+                                barcode
+                            )
+                            if (cached == null) {
+                                lookupResult
+                            } else {
+                                updatedSession = cached.session
+                                cached.found
+                            }
+                        }
+                        else -> lookupResult
                     }
-                    lookupResult
                 } catch (e: CollectionValidationException) {
                     LookupResult.InvalidInput(e.message ?: "Товар нельзя добавить в сессию.")
                 } catch (e: RuntimeException) {
@@ -534,9 +549,17 @@ class MainActivity : Activity() {
     private fun showLookupResult(result: LookupResult) {
         when (result) {
             is LookupResult.Found -> {
-                statusView.text = "Добавлено"
+                statusView.text = if (result.source == LookupSource.CACHED) {
+                    getString(R.string.cached_lookup_status)
+                } else {
+                    "Добавлено"
+                }
                 productNameView.text = result.name
-                detailView.text = "Товар добавлен или его количество увеличено."
+                detailView.text = if (result.source == LookupSource.CACHED) {
+                    getString(R.string.cached_lookup_detail)
+                } else {
+                    "Товар добавлен или его количество увеличено."
+                }
             }
             is LookupResult.NotFound -> {
                 statusView.text = "Не найдено"

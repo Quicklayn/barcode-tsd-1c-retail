@@ -6,6 +6,8 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.fail
 import org.junit.Before
 import org.junit.Test
@@ -127,6 +129,126 @@ class CollectionRepositoryTest {
     }
 
     @Test
+    fun onlineResultCanBeResolvedAndAggregatedFromCache() {
+        val repository = CollectionRepository(database.collectionSessionDao()) { SESSION_ID }
+        val draft = repository.loadOrCreate()
+        repository.addResolvedProduct(
+            draft.sessionId,
+            LookupResult.Found(BARCODE, ITEM_REF, "Товар")
+        )
+        database.collectionSessionDao().replaceSession(CollectionSession.draft(OTHER_SESSION_ID))
+
+        val cached = repository.resolveCachedProduct(OTHER_SESSION_ID, BARCODE)
+
+        assertNotNull(cached)
+        cached ?: return
+        assertEquals(LookupSource.CACHED, cached.found.source)
+        assertEquals(ITEM_REF, cached.found.itemRef)
+        assertEquals("Товар", cached.found.name)
+        assertEquals(1_000L, cached.session.lines.single().quantity.milliUnits)
+    }
+
+    @Test
+    fun cacheMissDoesNotMutateDraft() {
+        val repository = CollectionRepository(database.collectionSessionDao()) { SESSION_ID }
+        val draft = repository.loadOrCreate()
+
+        val cached = repository.resolveCachedProduct(draft.sessionId, BARCODE)
+
+        assertNull(cached)
+        assertEquals(0, repository.loadOrCreate().lines.size)
+    }
+
+    @Test
+    fun laterOnlineResultRefreshesCachedProduct() {
+        val repository = CollectionRepository(database.collectionSessionDao()) { SESSION_ID }
+        val firstDraft = repository.loadOrCreate()
+        repository.addResolvedProduct(
+            firstDraft.sessionId,
+            LookupResult.Found(BARCODE, ITEM_REF, "Старое наименование")
+        )
+        database.collectionSessionDao().replaceSession(CollectionSession.draft(OTHER_SESSION_ID))
+        repository.addResolvedProduct(
+            OTHER_SESSION_ID,
+            LookupResult.Found(BARCODE, OTHER_ITEM_REF, "Новое наименование")
+        )
+        database.collectionSessionDao().replaceSession(CollectionSession.draft(THIRD_SESSION_ID))
+
+        val cached = repository.resolveCachedProduct(THIRD_SESSION_ID, BARCODE)
+
+        assertNotNull(cached)
+        cached ?: return
+        assertEquals(OTHER_ITEM_REF, cached.found.itemRef)
+        assertEquals("Новое наименование", cached.found.name)
+        assertEquals(OTHER_ITEM_REF, cached.session.lines.single().itemRef)
+    }
+
+    @Test
+    fun repeatedCachedResultIncrementsQuantity() {
+        val repository = CollectionRepository(database.collectionSessionDao()) { SESSION_ID }
+        val draft = repository.loadOrCreate()
+        repository.addResolvedProduct(
+            draft.sessionId,
+            LookupResult.Found(BARCODE, ITEM_REF, "Товар")
+        )
+        database.collectionSessionDao().replaceSession(CollectionSession.draft(OTHER_SESSION_ID))
+
+        repository.resolveCachedProduct(OTHER_SESSION_ID, BARCODE)
+        val repeated = repository.resolveCachedProduct(OTHER_SESSION_ID, BARCODE)
+
+        assertNotNull(repeated)
+        assertEquals(2_000L, repeated?.session?.lines?.single()?.quantity?.milliUnits)
+    }
+
+    @Test
+    fun staleOnlineAndCachedLookupsCannotMutateNewDraft() {
+        val ids = ArrayDeque(listOf(SESSION_ID, OTHER_SESSION_ID))
+        val repository = CollectionRepository(database.collectionSessionDao()) { ids.removeFirst() }
+        val draft = repository.loadOrCreate()
+        repository.addResolvedProduct(
+            draft.sessionId,
+            LookupResult.Found(BARCODE, ITEM_REF, "Товар")
+        )
+        val completed = repository.complete(draft.sessionId)
+        val sent = repository.markSent(completed.sessionId, DOCUMENT_REF)
+        val newDraft = repository.startNewDraft(sent.sessionId)
+
+        expectSessionChanged {
+            repository.addResolvedProduct(
+                sent.sessionId,
+                LookupResult.Found(OTHER_BARCODE, OTHER_ITEM_REF, "Другой товар")
+            )
+        }
+        expectSessionChanged {
+            repository.resolveCachedProduct(sent.sessionId, BARCODE)
+        }
+
+        val restored = repository.loadOrCreate()
+        assertEquals(newDraft.sessionId, restored.sessionId)
+        assertEquals(0, restored.lines.size)
+        assertNull(repository.resolveCachedProduct(newDraft.sessionId, OTHER_BARCODE))
+    }
+
+    @Test
+    fun failedAggregationRollsBackOnlineCacheWrite() {
+        val repository = CollectionRepository(database.collectionSessionDao()) { SESSION_ID }
+        val completed = repository.loadOrCreate()
+            .aggregate(LookupResult.Found(BARCODE, ITEM_REF, "Товар"))
+            .complete()
+        repository.save(completed)
+
+        expectSessionChangedOrInvalidDraft {
+            repository.addResolvedProduct(
+                completed.sessionId,
+                LookupResult.Found(OTHER_BARCODE, OTHER_ITEM_REF, "Другой товар")
+            )
+        }
+        database.collectionSessionDao().replaceSession(CollectionSession.draft(OTHER_SESSION_ID))
+
+        assertNull(repository.resolveCachedProduct(OTHER_SESSION_ID, OTHER_BARCODE))
+    }
+
+    @Test
     fun lateAcceptedResponseCannotReplaceANewDraft() {
         val ids = ArrayDeque(listOf(SESSION_ID, OTHER_SESSION_ID))
         val repository = CollectionRepository(database.collectionSessionDao()) { ids.removeFirst() }
@@ -156,11 +278,32 @@ class CollectionRepositoryTest {
         assertEquals(0, restored.lines.size)
     }
 
+    private fun expectSessionChanged(operation: () -> Unit) {
+        try {
+            operation()
+            fail("A stale lookup must be rejected.")
+        } catch (_: CollectionValidationException) {
+            // Expected: the active session id changed before the lookup completed.
+        }
+    }
+
+    private fun expectSessionChangedOrInvalidDraft(operation: () -> Unit) {
+        try {
+            operation()
+            fail("A completed draft must reject lookup aggregation.")
+        } catch (_: CollectionValidationException) {
+            // Expected: the transaction must roll back when aggregation is rejected.
+        }
+    }
+
     private companion object {
         private const val SESSION_ID = "52af8363-48d3-4e7b-82b4-239760470f41"
         private const val OTHER_SESSION_ID = "2f7a5520-ac39-4c06-a069-89db6421a7fb"
+        private const val THIRD_SESSION_ID = "168f538e-e294-4817-a20f-6ce9d8ea863c"
         private const val ITEM_REF = "14f2c4da-8238-4a9f-bf56-3ec3a2f4d86f"
         private const val OTHER_ITEM_REF = "99241fb2-b926-494c-b4e2-a0da243a2cc0"
         private const val DOCUMENT_REF = "8c85bdb8-5905-4869-b152-8b0fe2d5b413"
+        private const val BARCODE = "4600000000011"
+        private const val OTHER_BARCODE = "4600000000028"
     }
 }

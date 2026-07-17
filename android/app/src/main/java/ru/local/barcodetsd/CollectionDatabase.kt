@@ -7,11 +7,14 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.PrimaryKey
 import androidx.room.Query
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.Transaction
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import java.util.UUID
 
 @Entity(tableName = "collection_sessions")
@@ -43,9 +46,21 @@ internal data class CollectionLineEntity(
     val position: Int
 )
 
+@Entity(tableName = "cached_products")
+internal data class CachedProductEntity(
+    @PrimaryKey val normalizedBarcode: String,
+    val itemRef: String,
+    val name: String
+)
+
 internal data class StoredCollectionSession(
     val header: CollectionSessionEntity,
     val lines: List<CollectionLineEntity>
+)
+
+internal data class CachedProductResolution(
+    val found: LookupResult.Found,
+    val session: CollectionSession
 )
 
 private fun StoredCollectionSession.toDomain(): CollectionSession =
@@ -78,6 +93,12 @@ internal abstract class CollectionSessionDao {
     @Insert
     protected abstract fun insertLines(lines: List<CollectionLineEntity>)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    protected abstract fun upsertCachedProduct(product: CachedProductEntity)
+
+    @Query("SELECT * FROM cached_products WHERE normalizedBarcode = :normalizedBarcode")
+    protected abstract fun loadCachedProduct(normalizedBarcode: String): CachedProductEntity?
+
     @Query("DELETE FROM collection_sessions")
     protected abstract fun deleteAllSessions()
 
@@ -102,6 +123,51 @@ internal abstract class CollectionSessionDao {
         val updated = update(stored.toDomain())
         replaceSessionRows(updated)
         return updated
+    }
+
+    @Transaction
+    open fun cacheAndUpdateSession(
+        expectedSessionId: String,
+        found: LookupResult.Found
+    ): CollectionSession? {
+        val stored = loadStoredSession() ?: return null
+        if (stored.header.sessionId != expectedSessionId) {
+            return null
+        }
+
+        val updated = stored.toDomain().aggregate(found)
+        upsertCachedProduct(
+            CachedProductEntity(
+                normalizedBarcode = found.barcode,
+                itemRef = found.itemRef,
+                name = found.name
+            )
+        )
+        replaceSessionRows(updated)
+        return updated
+    }
+
+    @Transaction
+    open fun resolveCachedProductAndUpdateSession(
+        expectedSessionId: String,
+        normalizedBarcode: String
+    ): CachedProductResolution? {
+        val stored = loadStoredSession()
+            ?: throw CollectionValidationException("Активная сессия уже изменилась.")
+        if (stored.header.sessionId != expectedSessionId) {
+            throw CollectionValidationException("Активная сессия уже изменилась.")
+        }
+
+        val cached = loadCachedProduct(normalizedBarcode) ?: return null
+        val found = LookupResult.Found(
+            barcode = normalizedBarcode,
+            itemRef = cached.itemRef,
+            name = cached.name,
+            source = LookupSource.CACHED
+        )
+        val updated = stored.toDomain().aggregate(found)
+        replaceSessionRows(updated)
+        return CachedProductResolution(found, updated)
     }
 
     private fun loadStoredSession(): StoredCollectionSession? {
@@ -135,9 +201,21 @@ internal abstract class CollectionSessionDao {
     }
 }
 
+internal val MIGRATION_1_2: Migration = object : Migration(1, 2) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """CREATE TABLE IF NOT EXISTS `cached_products` (`normalizedBarcode` TEXT NOT NULL, `itemRef` TEXT NOT NULL, `name` TEXT NOT NULL, PRIMARY KEY(`normalizedBarcode`))"""
+        )
+    }
+}
+
 @Database(
-    entities = [CollectionSessionEntity::class, CollectionLineEntity::class],
-    version = 1,
+    entities = [
+        CollectionSessionEntity::class,
+        CollectionLineEntity::class,
+        CachedProductEntity::class
+    ],
+    version = 2,
     exportSchema = false
 )
 internal abstract class BarcodeDatabase : RoomDatabase() {
@@ -153,7 +231,10 @@ internal abstract class BarcodeDatabase : RoomDatabase() {
                     context.applicationContext,
                     BarcodeDatabase::class.java,
                     "barcode-collection.db"
-                ).build().also { instance = it }
+                )
+                    .addMigrations(MIGRATION_1_2)
+                    .build()
+                    .also { instance = it }
             }
     }
 }
@@ -180,9 +261,19 @@ internal class CollectionRepository(
     fun addResolvedProduct(
         sessionId: String,
         found: LookupResult.Found
-    ): CollectionSession = update(sessionId) { current ->
-        current.aggregate(found)
+    ): CollectionSession {
+        if (found.source != LookupSource.ONLINE) {
+            throw CollectionValidationException("Кешированный результат требует кеш-пути.")
+        }
+        return dao.cacheAndUpdateSession(sessionId, found)
+            ?: throw CollectionValidationException("Активная сессия уже изменилась.")
     }
+
+    fun resolveCachedProduct(
+        sessionId: String,
+        normalizedBarcode: String
+    ): CachedProductResolution? =
+        dao.resolveCachedProductAndUpdateSession(sessionId, normalizedBarcode)
 
     fun changeQuantity(
         sessionId: String,
