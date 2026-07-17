@@ -10,6 +10,7 @@
     <item name="status_view" type="id" />
     <item name="product_name_view" type="id" />
     <item name="detail_view" type="id" />
+    <item name="collection_summary_view" type="id" />
     <item name="collection_lines" type="id" />
     <item name="complete_button" type="id" />
     <item name="send_button" type="id" />

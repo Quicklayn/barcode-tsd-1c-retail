@@ -18,6 +18,7 @@ import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.ScrollView
 import android.widget.TextView
+import java.math.BigDecimal
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
@@ -47,6 +48,7 @@ class MainActivity : Activity() {
     private lateinit var statusView: TextView
     private lateinit var productNameView: TextView
     private lateinit var detailView: TextView
+    private lateinit var collectionSummaryView: TextView
     private lateinit var sessionIdView: TextView
     private lateinit var sessionStateView: TextView
     private lateinit var linesContainer: LinearLayout
@@ -140,6 +142,10 @@ class MainActivity : Activity() {
             id = R.id.detail_view
             textSize = 16f
         }
+        collectionSummaryView = TextView(this).apply {
+            id = R.id.collection_summary_view
+            textSize = 16f
+        }
         linesContainer = LinearLayout(this).apply {
             id = R.id.collection_lines
             orientation = LinearLayout.VERTICAL
@@ -176,6 +182,7 @@ class MainActivity : Activity() {
         content.addView(productNameView, matchWrap(dp(6)))
         content.addView(detailView, matchWrap(dp(16)))
         content.addView(label("Строки"), matchWrap(dp(4)))
+        content.addView(collectionSummaryView, matchWrap(dp(4)))
         content.addView(linesContainer, matchWrap(dp(12)))
         content.addView(completeButton, matchWrap(dp(8)))
         content.addView(sendButton, matchWrap(dp(8)))
@@ -745,6 +752,7 @@ class MainActivity : Activity() {
         if (session == null) {
             sessionStateView.text = "Загрузка"
             sessionIdView.text = ""
+            collectionSummaryView.text = getString(R.string.collection_summary, 0, "0")
             linesContainer.removeAllViews()
             barcodeInput.isEnabled = false
             lookupButton.isEnabled = false
@@ -760,6 +768,14 @@ class MainActivity : Activity() {
             CollectionState.SENT -> "Отправлена"
         }
         sessionIdView.text = session.sessionId
+        collectionSummaryView.text = getString(
+            R.string.collection_summary,
+            session.lines.size,
+            session.lines
+                .fold(BigDecimal.ZERO) { total, line -> total + line.quantity.toBigDecimal() }
+                .stripTrailingZeros()
+                .toPlainString()
+        )
         val draftEditable = session.state == CollectionState.DRAFT && !isOperationInProgress
         barcodeInput.isEnabled = draftEditable
         lookupButton.isEnabled = draftEditable

@@ -5,6 +5,7 @@ import android.content.Context
 import android.view.View
 import android.widget.Button
 import android.widget.EditText
+import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
@@ -47,6 +48,92 @@ class MainActivityTest {
     fun restoreDraft() {
         database.openHelper.writableDatabase.execSQL("DELETE FROM cached_products")
         database.collectionSessionDao().replaceSession(CollectionSession.draft(SESSION_ID))
+    }
+
+    @Test
+    fun emptyDraftDisplaysZeroSummary() {
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            waitUntil(scenario) { activity ->
+                activity.findViewById<TextView>(R.id.session_state_view).text.toString() == "Черновик"
+            }
+
+            scenario.onActivity { activity ->
+                assertEquals(
+                    "Позиций: 0 · Количество: 0",
+                    activity.findViewById<TextView>(R.id.collection_summary_view).text.toString()
+                )
+            }
+        }
+    }
+
+    @Test
+    fun fractionalSummaryUpdatesAfterEditDeleteAndCompletedRestore() {
+        val session = CollectionSession.restore(
+            SESSION_ID,
+            CollectionState.DRAFT,
+            listOf(
+                CollectionLine("item-1", "Товар 1", "barcode-1", CollectionQuantity.parse("2")!!),
+                CollectionLine("item-2", "Товар 2", "barcode-2", CollectionQuantity.parse("1.250")!!)
+            ),
+            null
+        )
+        database.collectionSessionDao().replaceSession(session)
+
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            waitUntil(scenario) { activity ->
+                activity.findViewById<TextView>(R.id.collection_summary_view).text.toString() ==
+                    "Позиций: 2 · Количество: 3.25"
+            }
+
+            scenario.onActivity { activity ->
+                val lines = activity.findViewById<LinearLayout>(R.id.collection_lines)
+                val firstRow = lines.getChildAt(0) as LinearLayout
+                (firstRow.getChildAt(2) as EditText).setText("2.500")
+                (firstRow.getChildAt(3) as LinearLayout).getChildAt(0).performClick()
+            }
+            waitUntil(scenario) { activity ->
+                activity.findViewById<TextView>(R.id.collection_summary_view).text.toString() ==
+                    "Позиций: 2 · Количество: 3.75"
+            }
+
+            scenario.close()
+            database.collectionSessionDao().replaceSession(
+                session.changeQuantity("item-1", "2.500").deleteLine("item-2")
+            )
+        }
+
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            waitUntil(scenario) { activity ->
+                activity.findViewById<TextView>(R.id.collection_summary_view).text.toString() ==
+                    "Позиций: 1 · Количество: 2.5"
+            }
+        }
+
+        database.collectionSessionDao().replaceSession(session.complete())
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            waitUntil(scenario) { activity ->
+                activity.findViewById<TextView>(R.id.session_state_view).text.toString() == "Завершена"
+            }
+            scenario.onActivity { activity ->
+                assertEquals(
+                    "Позиций: 2 · Количество: 3.25",
+                    activity.findViewById<TextView>(R.id.collection_summary_view).text.toString()
+                )
+            }
+        }
+
+        database.collectionSessionDao().replaceSession(session.complete().markSent(SENT_DOCUMENT_REF))
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            waitUntil(scenario) { activity ->
+                activity.findViewById<TextView>(R.id.session_state_view).text.toString() == "Отправлена"
+            }
+            scenario.onActivity { activity ->
+                assertEquals(
+                    "Позиций: 2 · Количество: 3.25",
+                    activity.findViewById<TextView>(R.id.collection_summary_view).text.toString()
+                )
+            }
+        }
     }
 
     @Test
@@ -181,6 +268,10 @@ class MainActivityTest {
 
                 scenario.onActivity { activity ->
                     assertEquals(
+                        "Позиций: 1 · Количество: 1",
+                        activity.findViewById<TextView>(R.id.collection_summary_view).text.toString()
+                    )
+                    assertEquals(
                         SECOND_CANDIDATE_NAME,
                         activity.findViewById<TextView>(R.id.product_name_view).text.toString()
                     )
@@ -196,7 +287,9 @@ class MainActivityTest {
                 waitUntil(scenario) { activity ->
                     activity.activeCandidateDialog == null &&
                         activity.findViewById<TextView>(R.id.status_view).text.toString() ==
-                        "Добавлено"
+                        "Добавлено" &&
+                        activity.findViewById<TextView>(R.id.collection_summary_view).text.toString() ==
+                        "Позиций: 1 · Количество: 2"
                 }
 
                 val repeated = repository.loadOrCreate()
@@ -523,6 +616,7 @@ class MainActivityTest {
 
     private companion object {
         private const val SESSION_ID = "52af8363-48d3-4e7b-82b4-239760470f41"
+        private const val SENT_DOCUMENT_REF = "4552555d-b9b8-4b0f-9c5c-874971511bc3"
         private const val ITEM_REF = "14f2c4da-8238-4a9f-bf56-3ec3a2f4d86f"
         private const val CACHED_BARCODE = "4600000000035"
         private const val CACHED_ITEM_REF = "99241fb2-b926-494c-b4e2-a0da243a2cc0"
