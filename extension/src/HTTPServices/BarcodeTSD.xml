@@ -42,6 +42,33 @@
 					</Method>
 				</ChildObjects>
 			</URLTemplate>
+			<URLTemplate uuid="db0e1403-f4b3-4d0f-b264-f8c71edce97d">
+				<Properties>
+					<Name>BarcodeCollectionSessions</Name>
+					<Synonym>
+						<v8:item>
+							<v8:lang>ru</v8:lang>
+							<v8:content>Сессии сбора штрихкодов</v8:content>
+						</v8:item>
+					</Synonym>
+					<Template>/v1/barcode-collection-sessions</Template>
+				</Properties>
+				<ChildObjects>
+					<Method uuid="a487ff18-9a74-46b6-9f53-fee5fa258e5b">
+						<Properties>
+							<Name>Submit</Name>
+							<Synonym>
+								<v8:item>
+									<v8:lang>ru</v8:lang>
+									<v8:content>Принять</v8:content>
+								</v8:item>
+							</Synonym>
+							<HTTPMethod>POST</HTTPMethod>
+							<Handler>BarcodeCollectionSessionsSubmit</Handler>
+						</Properties>
+					</Method>
+				</ChildObjects>
+			</URLTemplate>
 		</ChildObjects>
 	</HTTPService>
 </MetaDataObject>

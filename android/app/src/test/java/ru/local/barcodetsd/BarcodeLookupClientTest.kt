@@ -42,6 +42,7 @@ class BarcodeLookupClientTest {
         assertTrue(result is LookupResult.Found)
         result as LookupResult.Found
         assertEquals("4600000000011", result.barcode)
+        assertEquals("item-1", result.itemRef)
         assertEquals("Товар 1", result.name)
     }
 
@@ -151,7 +152,21 @@ class BarcodeLookupClientTest {
 
         assertTrue(result is LookupResult.ServerError)
         result as LookupResult.ServerError
-        assertEquals("1С вернула found без наименования товара.", result.message)
+        assertEquals("1С вернула found без ссылки или наименования товара.", result.message)
+    }
+
+    @Test
+    fun resolveMapsFoundWithoutItemRefToServerError() {
+        enqueueResponse(
+            200,
+            """{"status":"found","barcode":"1","matches":[{"name":"Товар"}]}"""
+        )
+
+        val result = client.resolve(serviceUrl, "", "", "1")
+
+        assertTrue(result is LookupResult.ServerError)
+        result as LookupResult.ServerError
+        assertEquals("1С вернула found без ссылки или наименования товара.", result.message)
     }
 
     @Test

@@ -88,6 +88,21 @@ try {
             -ObjectPath ".\extension\src\HTTPServices\BarcodeTSD.xml"
     }
 
+    Invoke-CheckedCommand -Name "1C warehouse constant metadata" -Command {
+        & ".\.codex\skills\1c-metadata-manage\tools\1c-meta-validate\scripts\meta-validate.ps1" `
+            -ObjectPath ".\extension\src\Constants\BarcodeTSD_Склад.xml"
+    }
+
+    Invoke-CheckedCommand -Name "1C collection document metadata" -Command {
+        & ".\.codex\skills\1c-metadata-manage\tools\1c-meta-validate\scripts\meta-validate.ps1" `
+            -ObjectPath ".\extension\src\Documents\BarcodeTSD_СборШтрихкодов.xml"
+    }
+
+    Invoke-CheckedCommand -Name "1C accepted sessions register metadata" -Command {
+        & ".\.codex\skills\1c-metadata-manage\tools\1c-meta-validate\scripts\meta-validate.ps1" `
+            -ObjectPath ".\extension\src\InformationRegisters\BarcodeTSD_ПринятыеСессии.xml"
+    }
+
     Invoke-CheckedCommand -Name "1C TSD role" -Command {
         & ".\.codex\skills\1c-metadata-manage\tools\1c-role-validate\scripts\role-validate.ps1" `
             -RightsPath ".\extension\src\Roles\BarcodeTSD_Use\Ext\Rights.xml"
@@ -113,9 +128,9 @@ try {
             Push-Location ".\android"
             try {
                 if ($isWindowsPlatform) {
-                    & ".\gradlew.bat" :app:assembleDebug :app:testDebugUnitTest :app:lintDebug --no-daemon --no-configuration-cache
+                    & ".\gradlew.bat" :app:assembleDebug :app:assembleDebugAndroidTest :app:testDebugUnitTest :app:lintDebug --no-daemon --no-configuration-cache
                 } else {
-                    & "./gradlew" :app:assembleDebug :app:testDebugUnitTest :app:lintDebug --no-daemon --no-configuration-cache
+                    & "./gradlew" :app:assembleDebug :app:assembleDebugAndroidTest :app:testDebugUnitTest :app:lintDebug --no-daemon --no-configuration-cache
                 }
             } finally {
                 Pop-Location

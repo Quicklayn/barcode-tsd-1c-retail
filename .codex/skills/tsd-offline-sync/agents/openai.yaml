@@ -1,0 +1,4 @@
+interface:
+  display_name: "TSD Offline Sync"
+  short_description: "Design resilient TSD offline sync"
+  default_prompt: "Implement or review local persistence and synchronization for a TSD operation."

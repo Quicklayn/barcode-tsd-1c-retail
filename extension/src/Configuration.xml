@@ -63,8 +63,11 @@
 		</Properties>
 		<ChildObjects>
 			<Language>Русский</Language>
-			<HTTPService>BarcodeTSD</HTTPService>
 			<Role>BarcodeTSD_Use</Role>
+			<HTTPService>BarcodeTSD</HTTPService>
+			<Constant>BarcodeTSD_Склад</Constant>
+			<Document>BarcodeTSD_СборШтрихкодов</Document>
+			<InformationRegister>BarcodeTSD_ПринятыеСессии</InformationRegister>
 		</ChildObjects>
 	</Configuration>
 </MetaDataObject>

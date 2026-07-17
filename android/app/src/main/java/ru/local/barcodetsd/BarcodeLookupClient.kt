@@ -14,7 +14,7 @@ import java.nio.charset.StandardCharsets
 import java.util.Base64
 
 internal sealed class LookupResult {
-    data class Found(val barcode: String, val name: String) : LookupResult()
+    data class Found(val barcode: String, val itemRef: String, val name: String) : LookupResult()
     data class NotFound(val barcode: String, val message: String?) : LookupResult()
     data class Ambiguous(val barcode: String, val names: List<String>) : LookupResult()
     data class InvalidInput(val message: String) : LookupResult()
@@ -95,11 +95,13 @@ internal class BarcodeLookupClient {
 
         return when (status) {
             "found" -> {
-                val name = matches.optJSONObject(0)?.optString("name").orEmpty()
-                if (name.isBlank()) {
-                    LookupResult.ServerError("1С вернула found без наименования товара.")
+                val match = matches.optJSONObject(0)
+                val itemRef = match?.optString("itemRef").orEmpty()
+                val name = match?.optString("name").orEmpty()
+                if (itemRef.isBlank() || name.isBlank()) {
+                    LookupResult.ServerError("1С вернула found без ссылки или наименования товара.")
                 } else {
-                    LookupResult.Found(barcode, name)
+                    LookupResult.Found(barcode, itemRef, name)
                 }
             }
             "not_found" -> LookupResult.NotFound(

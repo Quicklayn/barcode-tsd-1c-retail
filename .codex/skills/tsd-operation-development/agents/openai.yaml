@@ -1,0 +1,4 @@
+interface:
+  display_name: "TSD Operation Development"
+  short_description: "Build bounded TSD operation slices"
+  default_prompt: "Implement the active OpenSpec TSD operation as a minimal end-to-end slice."

@@ -2,10 +2,16 @@
     <item name="service_url_input" type="id" />
     <item name="user_input" type="id" />
     <item name="password_input" type="id" />
+    <item name="session_id_view" type="id" />
+    <item name="session_state_view" type="id" />
     <item name="barcode_input" type="id" />
     <item name="lookup_button" type="id" />
     <item name="lookup_progress" type="id" />
     <item name="status_view" type="id" />
     <item name="product_name_view" type="id" />
     <item name="detail_view" type="id" />
+    <item name="collection_lines" type="id" />
+    <item name="complete_button" type="id" />
+    <item name="send_button" type="id" />
+    <item name="new_draft_button" type="id" />
 </resources>

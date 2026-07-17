@@ -1,0 +1,4 @@
+interface:
+  display_name: "TSD Scanner Integration"
+  short_description: "Integrate TSD barcode scanners"
+  default_prompt: "Implement or review scanner input for the Android TSD application."

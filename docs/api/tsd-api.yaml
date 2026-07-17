@@ -1,8 +1,8 @@
 openapi: 3.1.0
 info:
   title: Barcode TSD API
-  version: 0.1.0
-  description: Minimal API contract between the Android TSD application and 1C:Retail.
+  version: 0.2.0
+  description: API contract between the Android TSD application and 1C:Retail.
 servers:
   - url: http://localhost/{infobase}/hs/BarcodeTSD
     description: Local 1C web publication for the BarcodeTSD HTTP service
@@ -44,6 +44,65 @@ paths:
           description: Authentication required or rejected by 1C web publication before the handler runs; response body is publication-dependent.
         "403":
           description: Access forbidden by 1C web publication or infobase roles before the handler runs; response body is publication-dependent.
+        "500":
+          description: Unexpected 1C-side error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /v1/barcode-collection-sessions:
+    post:
+      operationId: submitBarcodeCollectionSession
+      summary: Submit one completed barcode collection session.
+      description: Idempotently stores the complete session as one unposted extension document. The session identifier is the idempotency key.
+      security:
+        - basicAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BarcodeCollectionSessionRequest"
+            examples:
+              completedSession:
+                value:
+                  sessionId: "52af8363-48d3-4e7b-82b4-239760470f41"
+                  lines:
+                    - itemRef: "14f2c4da-8238-4a9f-bf56-3ec3a2f4d86f"
+                      barcode: "4601234567890"
+                      quantity: 2
+      responses:
+        "200":
+          description: The session was accepted earlier or during this request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BarcodeCollectionSessionResponse"
+        "400":
+          description: Invalid JSON, request shape, session identifier, product reference, barcode, quantity, or duplicate product line.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Authentication required or rejected by 1C web publication before the handler runs; response body is publication-dependent.
+        "403":
+          description: Access forbidden by 1C web publication or infobase roles before the handler runs; response body is publication-dependent.
+        "409":
+          description: The extension warehouse is invalid, or the session identifier was already accepted with different lines.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                idempotencyConflict:
+                  value:
+                    error: idempotency_conflict
+                    message: The session was already accepted with different data.
+                warehouseNotConfigured:
+                  value:
+                    error: warehouse_not_configured
+                    message: The Barcode TSD warehouse is not configured.
         "500":
           description: Unexpected 1C-side error.
           content:
@@ -105,6 +164,65 @@ components:
         name:
           type: string
           description: Product name shown to the TSD user.
+    BarcodeCollectionSessionRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - sessionId
+        - lines
+      properties:
+        sessionId:
+          type: string
+          format: uuid
+          description: Client-generated idempotency key retained for every retry.
+        lines:
+          type: array
+          minItems: 1
+          maxItems: 1000
+          description: Complete collection lines. Each itemRef must occur only once.
+          items:
+            $ref: "#/components/schemas/BarcodeCollectionLine"
+    BarcodeCollectionLine:
+      type: object
+      additionalProperties: false
+      required:
+        - itemRef
+        - barcode
+        - quantity
+      properties:
+        itemRef:
+          type: string
+          format: uuid
+          description: Opaque product reference returned by barcode lookup.
+        barcode:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: Source barcode retained for the collection result.
+        quantity:
+          type: number
+          exclusiveMinimum: 0
+          maximum: 999999999999.999
+          multipleOf: 0.001
+          description: Collected quantity with at most three decimal places.
+    BarcodeCollectionSessionResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - status
+        - sessionId
+        - documentRef
+      properties:
+        status:
+          type: string
+          const: accepted
+        sessionId:
+          type: string
+          format: uuid
+        documentRef:
+          type: string
+          format: uuid
+          description: Reference of the unposted 1C collection document.
     ErrorResponse:
       type: object
       additionalProperties: false

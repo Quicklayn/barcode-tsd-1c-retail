@@ -9,6 +9,12 @@
       "methods": {
         "Resolve": "POST"
       }
+    },
+    "BarcodeCollectionSessions": {
+      "template": "/v1/barcode-collection-sessions",
+      "methods": {
+        "Submit": "POST"
+      }
     }
   }
 }

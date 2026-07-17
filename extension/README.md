@@ -10,12 +10,31 @@ API without modifying the `RT3/` baseline export directly.
 - `RT3/` remains the read-only source of facts about the standard Retail 3.0
   configuration.
 - HTTP service metadata object name: `BarcodeTSD`.
-- HTTP endpoint: `POST /hs/BarcodeTSD/v1/barcode/resolve`.
+- HTTP endpoints:
+  - `POST /hs/BarcodeTSD/v1/barcode/resolve`
+  - `POST /hs/BarcodeTSD/v1/barcode-collection-sessions`
 - The first backend capability is a read-only HTTP endpoint for product barcode
   lookup.
 - The endpoint must use standard Retail barcode metadata for the MVP:
   - `РегистрСведений.ШтрихкодыНоменклатуры`
 - The first response returns only the product name and an opaque item reference.
+
+## Barcode Collection Sessions
+
+- `Константа.BarcodeTSD_Склад` stores the warehouse used for new sessions. It
+  must reference an existing `Справочник.СтруктурныеЕдиницы` item whose type is
+  `Склад`.
+- `Документ.BarcodeTSD_СборШтрихкодов` stores the accepted lines. Its unique
+  non-periodic string number is the session UUID; the document is written
+  unposted and produces no register movements.
+- `РегистрСведений.BarcodeTSD_ПринятыеСессии` stores the session UUID and its
+  original document reference. The handler locks this key and writes the
+  document and register record atomically.
+- An equivalent retry returns the original document reference. Reusing a
+  session UUID with different lines returns `409 idempotency_conflict`.
+
+Before using the collection endpoint, set `BarcodeTSD_Склад` and assign the
+minimal `BarcodeTSD_Use` role to the technical HTTP-service user.
 
 ## Web Publication
 

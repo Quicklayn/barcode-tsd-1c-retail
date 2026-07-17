@@ -39,4 +39,40 @@
             <value>true</value>
         </right>
     </object>
+    <object>
+        <name>Constant.BarcodeTSD_Склад</name>
+        <right>
+            <name>Read</name>
+            <value>true</value>
+        </right>
+    </object>
+    <object>
+        <name>Catalog.СтруктурныеЕдиницы</name>
+        <right>
+            <name>Read</name>
+            <value>true</value>
+        </right>
+    </object>
+    <object>
+        <name>Document.BarcodeTSD_СборШтрихкодов</name>
+        <right>
+            <name>Read</name>
+            <value>true</value>
+        </right>
+        <right>
+            <name>Insert</name>
+            <value>true</value>
+        </right>
+    </object>
+    <object>
+        <name>InformationRegister.BarcodeTSD_ПринятыеСессии</name>
+        <right>
+            <name>Read</name>
+            <value>true</value>
+        </right>
+        <right>
+            <name>Update</name>
+            <value>true</value>
+        </right>
+    </object>
 </Rights>
