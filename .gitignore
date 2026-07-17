@@ -24,6 +24,10 @@ android/**/.cxx/
 android/captures/
 android/*.iml
 
+# Project-local development tools
+node_modules/
+.tmp/
+
 # IDE
 .idea/
 .vscode/

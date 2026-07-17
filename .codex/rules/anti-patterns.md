@@ -4,6 +4,8 @@ alwaysApply: false
 ---
 # 1C Anti-Patterns and Performance Guidelines
 
+> **Ownership.** This file owns the anti-pattern **catalog**: severity, detection hints, before/after fix templates. The normative query rules themselves (no queries in loops, parameterization, `КАК` aliases, virtual-table filters via parameters, intermediate result variable, `ВТ_*` naming, `ПЕРВЫЕ N`) are owned by `dev-standards-architecture.md §3 → "Queries"`; the dot-notation ban — by `dev-standards-architecture.md §4`. On conflict, the owner file wins — update rules there, update examples here.
+
 ## Critical Anti-Patterns (Must Fix)
 
 ### 1. Query in Loop
@@ -125,8 +127,13 @@ alwaysApply: false
 "ВЫБРАТЬ ПЕРВЫЕ 10
 |   Контрагенты.Ссылка КАК Ссылка
 |ИЗ
-|   Справочник.Контрагенты КАК Контрагенты"
+|   Справочник.Контрагенты КАК Контрагенты
+|
+|УПОРЯДОЧИТЬ ПО
+|   Контрагенты.Наименование"
 ```
+
+Always pair `ПЕРВЫЕ N` with `УПОРЯДОЧИТЬ ПО` — without an explicit ordering the returned subset is non-deterministic and may differ between runs and DBMS engines.
 
 ### 6. Excessive Client-Server Calls
 
@@ -181,7 +188,7 @@ alwaysApply: false
 
 **Impact:** Bypasses the platform's user-message subsystem; messages are not bound to form fields, are not collected by long-running operations, and behave inconsistently between thin / web / mobile clients.
 **Severity:** HIGH
-**Source rule:** `dev-standards-core.md §2 → "Forbidden Calls and Constructs"` ("`Сообщить()` for user notifications is **PROHIBITED**").
+**Source rule:** `dev-standards-code-style.md → "Forbidden Calls and Constructs"` ("`Сообщить()` for user notifications is **PROHIBITED**").
 
 ```bsl
 // ❌ HIGH: legacy global call, not bound to form fields, lost in long-running ops
@@ -233,7 +240,7 @@ alwaysApply: false
 
 ### 9. O(n²) Algorithm
 
-**Impact:** Exponential performance degradation
+**Impact:** Quadratic growth in comparisons and execution time as both collections grow
 **Severity:** MEDIUM
 
 ```bsl

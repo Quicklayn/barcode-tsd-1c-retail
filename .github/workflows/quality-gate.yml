@@ -1,0 +1,104 @@
+name: Quality Gate
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quality-gate-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  process-and-contracts:
+    name: OpenSpec, 1C metadata, contracts
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install project tooling
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Run process and contract gate
+        shell: pwsh
+        run: |
+          if ("${{ github.event_name }}" -eq "pull_request") {
+            $baseRef = "origin/${{ github.base_ref }}"
+          } else {
+            $baseRef = "${{ github.event.before }}"
+          }
+
+          .\scripts\quality\Invoke-QualityGate.ps1 `
+            -Mode Fast `
+            -DiffMode Range `
+            -BaseRef $baseRef `
+            -RequireCompleteTasks
+
+  android:
+    name: Android build, tests, lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@v6
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK packages
+        run: |
+          yes | sdkmanager --licenses
+          sdkmanager "platforms;android-36" "build-tools;36.0.0"
+
+      - name: Build, test, and lint Android app
+        working-directory: android
+        run: |
+          chmod +x ./gradlew
+          ./gradlew :app:assembleDebug :app:testDebugUnitTest :app:lintDebug --no-daemon --no-configuration-cache
+
+      - name: Assert APK minSdk 26
+        working-directory: android
+        run: |
+          actual="$(apkanalyzer manifest min-sdk app/build/outputs/apk/debug/app-debug.apk)"
+          echo "APK minSdk=$actual"
+          test "$actual" = "26"
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: barcode-tsd-debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+
+      - name: Upload verification reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: android-verification-reports
+          path: |
+            android/app/build/reports/lint-results-debug.html
+            android/app/build/reports/tests/testDebugUnitTest/
+          if-no-files-found: warn

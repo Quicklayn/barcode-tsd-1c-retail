@@ -1,0 +1,54 @@
+name: MVP Smoke
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: barcode-tsd-mvp-smoke
+  cancel-in-progress: false
+
+jobs:
+  full-smoke:
+    name: 1C and Android end-to-end
+    runs-on:
+      - self-hosted
+      - Windows
+      - X64
+      - barcode-tsd
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout without deleting runner-local RT3 baseline
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          clean: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Verify runner infrastructure
+        shell: pwsh
+        run: |
+          if (-not (Test-Path -LiteralPath ".\RT3\Configuration.xml" -PathType Leaf)) {
+            throw "The dedicated runner must provide RT3/Configuration.xml in its checkout workspace."
+          }
+
+      - name: Install project tooling
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Run full MVP quality gate
+        shell: pwsh
+        run: |
+          .\scripts\quality\Invoke-QualityGate.ps1 `
+            -Mode Mvp `
+            -DiffMode Range `
+            -BaseRef origin/main `
+            -HeadRef HEAD `
+            -RequireCompleteTasks

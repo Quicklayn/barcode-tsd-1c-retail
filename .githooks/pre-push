@@ -1,0 +1,55 @@
+#!/bin/sh
+set -eu
+
+repo_root=$(git rev-parse --show-toplevel)
+script_path="$repo_root/scripts/quality/Invoke-QualityGate.ps1"
+
+if command -v cygpath >/dev/null 2>&1; then
+  script_path=$(cygpath -w "$script_path")
+fi
+
+if command -v pwsh >/dev/null 2>&1; then
+  powershell_command=pwsh
+elif command -v powershell.exe >/dev/null 2>&1; then
+  powershell_command=powershell.exe
+else
+  echo "PowerShell is required for the Barcode TSD pre-push gate." >&2
+  exit 1
+fi
+
+zero_oid=0000000000000000000000000000000000000000
+validated_refs=0
+head_oid=$(git rev-parse HEAD)
+
+if [ -n "$(git status --porcelain --untracked-files=normal)" ]; then
+  echo "Commit or remove working-tree changes before push so verification matches the pushed snapshot." >&2
+  exit 1
+fi
+
+while read -r local_ref local_oid remote_ref remote_oid; do
+  local_ref=$(printf '%s' "$local_ref" | tr -d '\r')
+  local_oid=$(printf '%s' "$local_oid" | tr -d '\r')
+  remote_ref=$(printf '%s' "$remote_ref" | tr -d '\r')
+  remote_oid=$(printf '%s' "$remote_oid" | tr -d '\r')
+
+  if [ -z "${local_ref:-}" ] || [ "$local_oid" = "$zero_oid" ]; then
+    continue
+  fi
+
+  if [ "$local_oid" != "$head_oid" ]; then
+    echo "Push non-checked-out refs separately; the quality gate verifies the current HEAD only." >&2
+    exit 1
+  fi
+
+  "$powershell_command" -NoProfile -ExecutionPolicy Bypass -File "$script_path" \
+    -Mode Full \
+    -DiffMode Range \
+    -BaseRef "$remote_oid" \
+    -HeadRef "$local_oid" \
+    -RequireCompleteTasks
+  validated_refs=$((validated_refs + 1))
+done
+
+if [ "$validated_refs" -eq 0 ]; then
+  "$powershell_command" -NoProfile -ExecutionPolicy Bypass -File "$script_path" -Mode Full -DiffMode Range -RequireCompleteTasks
+fi

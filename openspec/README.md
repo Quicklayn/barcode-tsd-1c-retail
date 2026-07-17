@@ -1,13 +1,13 @@
 # OpenSpec
 
-> **AI agents:** if you need to install or update project rules, go to [`AGENT-INSTALL.md`](../AGENT-INSTALL.md). This file is a human-oriented overview of the OpenSpec workspace.
+> Проектный регламент запуска, quality gates, хуков, CI и обновления правил:
+> [`docs/development/openspec-workflow.md`](../docs/development/openspec-workflow.md).
 
 Spec-driven development workspace for this project, structured per the
 [Fission-AI/OpenSpec](https://github.com/Fission-AI/OpenSpec) v1.0+ workflow
 (OPSX, artifact-guided).
 
-This folder is bundled by the `1c-rules` installer (see `AGENT-INSTALL.md`,
-phase **Place / Shared OpenSpec scaffold**) so every project that installs
+This folder is bundled by the official project-scoped `1c-rules` installer so every project that installs
 `1c-rules` starts with a ready-to-use OpenSpec layout. The installer copies
 files in **skip-if-exists** mode — your existing specs and change proposals
 are never overwritten.
@@ -109,6 +109,15 @@ as user-modified, in which case `1c-rules` preserves your edits).
 3. **archive** — completed changes merge into `specs/` and the change folder
    is moved to `changes/archive/<date>-<change-name>/`.
 
+The project pins OpenSpec in the root lockfile. Invoke that local version:
+
+```powershell
+npm exec -- openspec list
+npm exec -- openspec instructions apply --change <change-name> --json
+npm run openspec:validate
+npm exec -- openspec archive <change-name> --yes
+```
+
 For deeper guidance see:
 
 - Getting started — <https://github.com/Fission-AI/OpenSpec/blob/main/docs/getting-started.md>
@@ -119,8 +128,8 @@ For deeper guidance see:
 
 The detailed agent-side rules for how to read and update this folder live in:
 
-- source repository: [`content/rules/sdd-integrations.md`](../content/rules/sdd-integrations.md)
-- installed project: the canonical rules directory referenced from `AGENTS.md`
+- installed project: [`.codex/rules/sdd-integrations.md`](../.codex/rules/sdd-integrations.md)
+- project overlay: [`.codex/rules/tsd-openspec-workflow.md`](../.codex/rules/tsd-openspec-workflow.md)
 
 That file is loaded on demand whenever an SDD framework is detected in the project.
 

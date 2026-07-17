@@ -12,7 +12,7 @@ This skill is the single source of truth for the project's MCP server catalog, t
 - **Mandatory for risk-bearing 1C work.** If a relevant server is exposed, call the fitting MCP tool for BSL / metadata edits or review, metadata XML, forms, integrations, refactoring, performance, runtime errors, platform API checks, impact analysis, syntax / quality validation, and project-memory operations.
 - **Conditional for external knowledge.** Use platform docs, БСП / SSL, and ITS MCP tools when the task depends on versioned platform behavior, reusable БСП APIs, or standards compliance. Do not call them for generic prose cleanup or rule-file editing unless such a fact is actually needed.
 - **Not required for Markdown / rules / documentation-only work.** For rule files, README, commands documentation, and similar prose-only edits, validate structure, links, paths, and internal consistency instead of calling 1C project MCP tools.
-- **Recommended: reading `docs/<server>.md` before parameter-rich calls.** Reading the schema is for parameter tuning, not a hard gate. Skipping it is acceptable only when the call is genuinely simple (a one-shot lookup with obvious arguments) and you are not invoking a parameter-rich tool listed below.
+- **Mandatory before parameter-rich calls.** Read `docs/<server>.md` before the first call in the session to every parameter-rich tool listed below, and re-read it when switching tools on that server. A genuinely simple one-shot lookup with obvious arguments may skip the detail file only when it is not in the parameter-rich list.
 
 ### Parameter-rich tools — read the doc first
 
@@ -42,7 +42,7 @@ If `docs/<server>.md` conflicts with the descriptor exposed by the current envir
 | **1c-ssl-mcp** | Standard Subsystems Library (БСП / SSL) search | [`docs/1c-ssl-mcp.md`](docs/1c-ssl-mcp.md) |
 | **1C-docs-mcp** | 1C platform documentation (search by description / by exact name) | [`docs/1C-docs-mcp.md`](docs/1C-docs-mcp.md) |
 | **1c-code-check-mcp** | 1С:Напарник — code review, technical check, AI rewrite/modify, ITS documentation | [`docs/1c-code-check-mcp.md`](docs/1c-code-check-mcp.md) |
-| **1c-syntax-checker-mcp** | BSL syntax and style via BSL Language Server | [`docs/1c-syntax-checker-mcp.md`](docs/1c-syntax-checker-mcp.md) |
+| **1c-syntax-checker-mcp** | BSL syntax and style via BSL Language Server: `syntaxcheck` (code as text) and `syntaxcheck_file` (check a file on disk by path, optionally line-filtered; exposed only when a sources directory is mounted — prefer it over `syntaxcheck` when available, it is cheaper) | [`docs/1c-syntax-checker-mcp.md`](docs/1c-syntax-checker-mcp.md) |
 | **1c-data-mcp** | Live-IB execution: BSL fragment run (`vcexecutecode`), query run (`vcexecutequery`), query parse-check (`validatequery`), last event-log error (`vcloggetlasterror`) | [`docs/1c-data-mcp.md`](docs/1c-data-mcp.md) |
 
 ## Fallback chain (highest priority to lowest)
@@ -66,7 +66,7 @@ These servers have no `Grep` / `rg` equivalent; call them only when their knowle
 2. `1c-ssl-mcp` — БСП / SSL reusable APIs and patterns.
 3. `1C-docs-mcp` — versioned platform documentation.
 4. `1c-code-check-mcp` — 1С:Напарник checks, ITS standards (`its_help` → `fetch_its` for every document used), AI drafts.
-5. `1c-syntax-checker-mcp` — BSL syntax / style validation after edits.
+5. `1c-syntax-checker-mcp` — BSL syntax / style validation after edits (prefer `syntaxcheck_file` over `syntaxcheck` when it is exposed — file check by path is more economical than passing code text).
 6. `1c-data-mcp` — execution against the **live** infobase (run a BSL fragment, run a query, parse-check a query, fetch the last event-log error). No `Grep` / `rg` equivalent — there is no offline substitute for "what does this running IB do right now". Call only when the question genuinely requires the live IB; default to read-only fragments and ask before any mutation. Details — [`docs/1c-data-mcp.md`](docs/1c-data-mcp.md).
 
 ## Quick map: "task → MCP tool"

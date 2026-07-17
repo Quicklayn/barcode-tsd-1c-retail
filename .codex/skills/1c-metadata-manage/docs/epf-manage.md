@@ -23,7 +23,7 @@ Generates the minimal set of XML source files for a 1C external data processor: 
 ### Command
 
 ```powershell
-pwsh -NoProfile -File skills/1c-metadata-manage/tools/1c-epf-scaffold/scripts/init.ps1 -Name "<Name>" [-Synonym "<Synonym>"] [-SrcDir "<SrcDir>"]
+powershell.exe -NoProfile -File skills/1c-metadata-manage/tools/1c-epf-scaffold/scripts/init.ps1 -Name "<Name>" [-Synonym "<Synonym>"] [-SrcDir "<SrcDir>"]
 ```
 
 ### What Gets Created
@@ -46,7 +46,7 @@ After scaffolding, use these skills to build out the processor:
 
 - **Add a form**: `1c-form-scaffold` skill
 - **Add a template/layout**: `1c-template-manage` skill
-- **Register with SSL (BSP)**: `1c-bsp-registration` skill
+- **Register with SSL (BSP)**: `bsp-manage.md` section 1 «Registration»
 - **Build EPF**: `1c-epf-build` skill
 - **Validate**: `1c-epf-validate` skill
 

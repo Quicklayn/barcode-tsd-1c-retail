@@ -1,34 +1,29 @@
-# OpenSpec project configuration.
-# Optional in OpenSpec v1.0+. Provides project-wide context to AI assistants
-# when working with specs and change proposals.
-#
-# Reference: https://github.com/Fission-AI/OpenSpec/blob/main/docs/customization.md
-#
-# Uncomment and fill in the sections relevant to your project. The installer
-# never overwrites this file once it exists, so feel free to customize.
+schema: spec-driven
 
-project:
-  name: "Barcode TSD for 1C:Retail 3.0"
-  description: "Native Android TSD application integrated with 1C:Retail 3.0 for barcode-driven warehouse and retail workflows."
+context: |
+  Project: Barcode TSD for 1C:Retail 3.0.
+  Stack: 1C:Enterprise extension under extension/** and native Kotlin/Gradle Android app under android/**.
+  Contract: OpenAPI files under docs/api/** are the boundary between Android and 1C.
+  Baseline: RT3/** is read-only and must never be changed by application work.
+  Android compatibility: minSdk=26 (Android 8.0 Oreo).
+  Delivery: OpenSpec is the only SDD workflow; do not add Spec Kit, Memory Bank, TaskMaster, or another parallel framework.
+  Architecture: new 1C work is extension-first unless an approved design explicitly says otherwise.
+  Verification: use repository scripts and lockfiles; do not depend on globally installed project tools.
 
-context:
-  tech_stack:
-    - "1C:Enterprise 8.3.27 / 1C:Retail 3.0.12.261 baseline export in RT3/"
-    - "1C extension-first backend integration under extension/"
-    - "Native Android Kotlin/Gradle application under android/"
-    - "OpenAPI contracts under docs/api/"
-  conventions:
-    - "OpenSpec is the only SDD workflow."
-    - "RT3/ is a read-only baseline unless a change explicitly authorizes modifying it."
-    - "New 1C server API work is designed for an extension first."
-    - "Android minSdk is 26 for Android 8.0 Oreo support."
-  constraints:
-    - "MVP is online-only: the Android app asks 1C for each barcode lookup."
-    - "Use standard 1C:Retail barcode metadata before adding custom storage."
-    - "Do not add Spec Kit or another parallel SDD framework."
-
-# artifacts:
-#   proposal:
-#     additional_sections: []
-#   tasks:
-#     additional_sections: []
+rules:
+  proposal:
+    - State the user or engineering problem, scope, non-goals, affected stacks, and rollback boundary.
+    - List every new or modified capability with its exact kebab-case spec directory.
+    - Do not describe product behavior that is not requested by the change.
+  specs:
+    - Use normative MUST or SHALL language and exactly four hashes for every Scenario heading.
+    - Cover cross-stack behavior at the API boundary when Android and 1C are both affected.
+    - Include failure and compatibility scenarios that can be verified by tests or repository gates.
+  design:
+    - Record architecture, placement, ownership, dependency, error-handling, security, migration, rollback, and verification decisions.
+    - Assign disjoint write scopes to subagents and keep RT3/** read-only.
+    - Resolve routine decisions before apply; leave Open Questions only when the answer depends on later live evidence.
+  tasks:
+    - Each checkbox must name concrete files or ownership, state a verifiable completion condition, and follow dependency order.
+    - Include strict OpenSpec validation, relevant stack tests, contract checks, review, spec synchronization, and archive.
+    - Do not mark a task complete until its command or observable acceptance check has passed.

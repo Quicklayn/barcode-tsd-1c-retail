@@ -33,6 +33,20 @@ MVP мобильного приложения для ТСД на Android и ра
 - статусы `found`, `not_found`, `ambiguous`;
 - Android-экран ввода/сканирования штрихкода.
 
+## Разработка через OpenSpec
+
+OpenSpec является единственным SDD-процессом проекта. Перед первой работой
+из корня репозитория выполните:
+
+```powershell
+.\scripts\setup\Initialize-Development.ps1
+```
+
+Команда устанавливает зафиксированную версию OpenSpec, подключает Git hooks и
+запускает быстрые проверки. Полный цикл `propose → apply → verify → archive`,
+режимы quality gate, CI, обновление правил и восстановление окружения описаны в
+[`docs/development/openspec-workflow.md`](docs/development/openspec-workflow.md).
+
 Локально проверено:
 
 - Android build/install/run на эмуляторе;
@@ -54,23 +68,17 @@ cd android
 adb shell am start -n ru.local.barcodetsd/.MainActivity
 ```
 
-Та же проверка, что выполняется в GitHub Actions:
+Единый полный quality gate, эквивалентный обязательным локальным проверкам:
 
 ```powershell
-cd android
-.\gradlew.bat :app:assembleDebug :app:testDebugUnitTest :app:lintDebug --no-daemon --no-configuration-cache
+.\scripts\quality\Invoke-QualityGate.ps1 -Mode Full -DiffMode Working
 ```
 
 APK после сборки: `android/app/build/outputs/apk/debug/app-debug.apk`.
 
-GitHub Actions также сохраняет APK в artifact `barcode-tsd-debug-apk`, а
-отчеты проверки — в `android-verification-reports`.
-
-Дополнительно в GitHub Actions выполняются:
-
-- `OpenSpec` — строгая проверка `openspec/**`;
-- `Smoke Scripts` — синтаксис PowerShell smoke-скриптов и сверка контрактов
-  между OpenAPI, OpenSpec, backend-обработчиком и smoke-проверками.
+GitHub Actions workflow `Quality Gate` проверяет OpenSpec, PowerShell,
+структуру расширения 1С, межстековый контракт и Android на каждом pull request
+и push в `main`. APK и отчеты Android сохраняются как artifacts.
 
 Для эмулятора URL по умолчанию:
 `http://10.0.2.2:8081/retailtest/hs/BarcodeTSD`. Для физического ТСД укажите в
@@ -107,4 +115,10 @@ Android-smoke проверяет UI-сценарии `found`, `not_found` и `am
 
 ```powershell
 .\docs\testing\run-full-mvp-smoke.ps1
+```
+
+Тот же сценарий вместе со всеми предварительными проверками:
+
+```powershell
+.\scripts\quality\Invoke-QualityGate.ps1 -Mode Mvp -DiffMode Working
 ```
