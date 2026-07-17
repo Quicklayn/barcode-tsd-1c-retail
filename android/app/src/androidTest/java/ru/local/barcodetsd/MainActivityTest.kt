@@ -1,5 +1,6 @@
 package ru.local.barcodetsd
 
+import android.app.AlertDialog
 import android.content.Context
 import android.view.View
 import android.widget.Button
@@ -135,6 +136,153 @@ class MainActivityTest {
     }
 
     @Test
+    fun ambiguousDialogShowsResponseOrderAndSelectedCandidateAggregatesExactly() {
+        HttpTestServer(
+            200,
+            ambiguousResponseBody(),
+            requestCount = 2
+        ).use { server ->
+            ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+                waitUntil(scenario) { activity ->
+                    activity.findViewById<Button>(R.id.lookup_button).isEnabled
+                }
+
+                scenario.onActivity { activity ->
+                    activity.findViewById<EditText>(R.id.service_url_input)
+                        .setText(server.serviceUrl)
+                    activity.findViewById<EditText>(R.id.barcode_input)
+                        .setText(AMBIGUOUS_REQUEST_BARCODE)
+                    activity.findViewById<Button>(R.id.lookup_button).performClick()
+                }
+
+                waitUntil(scenario) { activity ->
+                    activity.activeCandidateDialog?.isShowing == true
+                }
+                scenario.onActivity { activity ->
+                    val dialog = requireNotNull(activity.activeCandidateDialog)
+                    assertEquals(2, dialog.listView.adapter.count)
+                    assertEquals("1. $FIRST_CANDIDATE_NAME", dialog.listView.adapter.getItem(0))
+                    assertEquals("2. $SECOND_CANDIDATE_NAME", dialog.listView.adapter.getItem(1))
+                    clickDialogItem(dialog, 1)
+                }
+
+                waitUntil(scenario) { activity ->
+                    activity.activeCandidateDialog == null &&
+                        activity.findViewById<TextView>(R.id.status_view).text.toString() ==
+                        "Добавлено"
+                }
+
+                val repository = CollectionRepository(database.collectionSessionDao())
+                val selected = repository.loadOrCreate()
+                assertEquals(SECOND_CANDIDATE_ITEM_REF, selected.lines.single().itemRef)
+                assertEquals(SECOND_CANDIDATE_NAME, selected.lines.single().name)
+                assertEquals(AMBIGUOUS_RESPONSE_BARCODE, selected.lines.single().barcode)
+                assertEquals(1_000L, selected.lines.single().quantity.milliUnits)
+
+                scenario.onActivity { activity ->
+                    assertEquals(
+                        SECOND_CANDIDATE_NAME,
+                        activity.findViewById<TextView>(R.id.product_name_view).text.toString()
+                    )
+                    assertTrue(activity.findViewById<EditText>(R.id.barcode_input).hasFocus())
+                    activity.findViewById<Button>(R.id.lookup_button).performClick()
+                }
+                waitUntil(scenario) { activity ->
+                    activity.activeCandidateDialog?.isShowing == true
+                }
+                scenario.onActivity { activity ->
+                    clickDialogItem(requireNotNull(activity.activeCandidateDialog), 1)
+                }
+                waitUntil(scenario) { activity ->
+                    activity.activeCandidateDialog == null &&
+                        activity.findViewById<TextView>(R.id.status_view).text.toString() ==
+                        "Добавлено"
+                }
+
+                val repeated = repository.loadOrCreate()
+                assertEquals(1, repeated.lines.size)
+                assertEquals(2_000L, repeated.lines.single().quantity.milliUnits)
+            }
+        }
+    }
+
+    @Test
+    fun cancellingAmbiguousDialogDoesNotMutateDraftAndRestoresFocus() {
+        HttpTestServer(200, ambiguousResponseBody()).use { server ->
+            ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+                waitUntil(scenario) { activity ->
+                    activity.findViewById<Button>(R.id.lookup_button).isEnabled
+                }
+                scenario.onActivity { activity ->
+                    activity.findViewById<EditText>(R.id.service_url_input)
+                        .setText(server.serviceUrl)
+                    activity.findViewById<EditText>(R.id.barcode_input)
+                        .setText(AMBIGUOUS_REQUEST_BARCODE)
+                    activity.findViewById<Button>(R.id.lookup_button).performClick()
+                }
+                waitUntil(scenario) { activity ->
+                    activity.activeCandidateDialog?.isShowing == true
+                }
+
+                scenario.onActivity { activity ->
+                    requireNotNull(activity.activeCandidateDialog)
+                        .getButton(AlertDialog.BUTTON_NEGATIVE)
+                        .performClick()
+                }
+
+                waitUntil(scenario) { activity ->
+                    activity.activeCandidateDialog == null &&
+                        activity.findViewById<TextView>(R.id.status_view).text.toString() ==
+                        "Не добавлено" &&
+                        activity.findViewById<EditText>(R.id.barcode_input).hasFocus()
+                }
+            }
+        }
+
+        assertEquals(
+            0,
+            CollectionRepository(database.collectionSessionDao()).loadOrCreate().lines.size
+        )
+    }
+
+    @Test
+    fun backFromAmbiguousDialogDoesNotMutateDraftAndRestoresFocus() {
+        HttpTestServer(200, ambiguousResponseBody()).use { server ->
+            ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+                waitUntil(scenario) { activity ->
+                    activity.findViewById<Button>(R.id.lookup_button).isEnabled
+                }
+                scenario.onActivity { activity ->
+                    activity.findViewById<EditText>(R.id.service_url_input)
+                        .setText(server.serviceUrl)
+                    activity.findViewById<EditText>(R.id.barcode_input)
+                        .setText(AMBIGUOUS_REQUEST_BARCODE)
+                    activity.findViewById<Button>(R.id.lookup_button).performClick()
+                }
+                waitUntil(scenario) { activity ->
+                    activity.activeCandidateDialog?.isShowing == true
+                }
+
+                scenario.onActivity { activity ->
+                    pressDialogBack(requireNotNull(activity.activeCandidateDialog))
+                }
+
+                waitUntil(scenario) { activity ->
+                    activity.activeCandidateDialog == null &&
+                        activity.findViewById<TextView>(R.id.status_view).text.toString() ==
+                        "Не добавлено" &&
+                        activity.findViewById<EditText>(R.id.barcode_input).hasFocus()
+                }
+            }
+        }
+
+        assertEquals(
+            0,
+            CollectionRepository(database.collectionSessionDao()).loadOrCreate().lines.size
+        )
+    }
+
+    @Test
     fun connectionFailureUsesCacheAndMarksVisibleResult() {
         val repository = CollectionRepository(database.collectionSessionDao()) { SESSION_ID }
         repository.addResolvedProduct(
@@ -181,7 +329,7 @@ class MainActivityTest {
 
     @Test
     fun onlineLookupKeepsExistingPresentationAndCollectionFlow() {
-        OneShotHttpServer(
+        HttpTestServer(
             200,
             """{"status":"found","barcode":"$ONLINE_BARCODE","matches":[{"itemRef":"$ONLINE_ITEM_REF","name":"$ONLINE_NAME"}]}"""
         ).use { server ->
@@ -227,7 +375,7 @@ class MainActivityTest {
         )
         database.collectionSessionDao().replaceSession(CollectionSession.draft(SESSION_ID))
 
-        OneShotHttpServer(
+        HttpTestServer(
             200,
             """{"status":"not_found","barcode":"$CACHED_BARCODE","matches":[],"message":"Не найдено в 1С"}"""
         ).use { server ->
@@ -280,9 +428,24 @@ class MainActivityTest {
         fail("Activity did not reach the expected state.")
     }
 
-    private class OneShotHttpServer(
+    private fun clickDialogItem(dialog: AlertDialog, index: Int) {
+        val list = dialog.listView
+        val itemView = list.getChildAt(index) ?: list.adapter.getView(index, null, list)
+        assertTrue(list.performItemClick(itemView, index, list.adapter.getItemId(index)))
+    }
+
+    @Suppress("DEPRECATION")
+    private fun pressDialogBack(dialog: AlertDialog) {
+        dialog.onBackPressed()
+    }
+
+    private fun ambiguousResponseBody(): String =
+        """{"status":"ambiguous","barcode":"$AMBIGUOUS_RESPONSE_BARCODE","matches":[{"itemRef":"$FIRST_CANDIDATE_ITEM_REF","name":"$FIRST_CANDIDATE_NAME"},{"itemRef":"$SECOND_CANDIDATE_ITEM_REF","name":"$SECOND_CANDIDATE_NAME"}]}"""
+
+    private class HttpTestServer(
         statusCode: Int,
-        responseBody: String
+        responseBody: String,
+        requestCount: Int = 1
     ) : AutoCloseable {
 
         private val socket = ServerSocket(0, 1, InetAddress.getByName("127.0.0.1"))
@@ -294,21 +457,23 @@ class MainActivityTest {
         init {
             executor.execute {
                 try {
-                    socket.accept().use { client ->
-                        client.soTimeout = 5_000
-                        val input = BufferedInputStream(client.getInputStream())
-                        readRequest(input)
-                        val body = responseBody.toByteArray(StandardCharsets.UTF_8)
-                        val headers = buildString {
-                            append("HTTP/1.1 $statusCode Test\r\n")
-                            append("Content-Type: application/json; charset=utf-8\r\n")
-                            append("Content-Length: ${body.size}\r\n")
-                            append("Connection: close\r\n\r\n")
-                        }.toByteArray(StandardCharsets.US_ASCII)
-                        client.getOutputStream().use { output ->
-                            output.write(headers)
-                            output.write(body)
-                            output.flush()
+                    repeat(requestCount) {
+                        socket.accept().use { client ->
+                            client.soTimeout = 5_000
+                            val input = BufferedInputStream(client.getInputStream())
+                            readRequest(input)
+                            val body = responseBody.toByteArray(StandardCharsets.UTF_8)
+                            val headers = buildString {
+                                append("HTTP/1.1 $statusCode Test\r\n")
+                                append("Content-Type: application/json; charset=utf-8\r\n")
+                                append("Content-Length: ${body.size}\r\n")
+                                append("Connection: close\r\n\r\n")
+                            }.toByteArray(StandardCharsets.US_ASCII)
+                            client.getOutputStream().use { output ->
+                                output.write(headers)
+                                output.write(body)
+                                output.flush()
+                            }
                         }
                     }
                 } catch (_: IOException) {
@@ -365,5 +530,11 @@ class MainActivityTest {
         private const val ONLINE_BARCODE = "4600000000042"
         private const val ONLINE_ITEM_REF = "70b6bb07-9505-432d-a403-6226fdbc211e"
         private const val ONLINE_NAME = "Онлайн-товар"
+        private const val AMBIGUOUS_REQUEST_BARCODE = "ambiguous-request"
+        private const val AMBIGUOUS_RESPONSE_BARCODE = "ambiguous-response"
+        private const val FIRST_CANDIDATE_ITEM_REF = "f2674553-ec1c-43c1-846c-0552c799f1af"
+        private const val FIRST_CANDIDATE_NAME = "Первый кандидат"
+        private const val SECOND_CANDIDATE_ITEM_REF = "aa82e57b-dcce-4fc1-b22d-a7ce60db1804"
+        private const val SECOND_CANDIDATE_NAME = "Второй кандидат"
     }
 }

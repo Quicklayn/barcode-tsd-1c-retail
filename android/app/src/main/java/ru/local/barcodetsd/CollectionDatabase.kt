@@ -269,6 +269,20 @@ internal class CollectionRepository(
             ?: throw CollectionValidationException("Активная сессия уже изменилась.")
     }
 
+    fun addSelectedAmbiguousCandidate(
+        sessionId: String,
+        barcode: String,
+        candidate: ProductCandidate
+    ): CollectionSession = update(sessionId) { current ->
+        current.aggregate(
+            LookupResult.Found(
+                barcode = barcode,
+                itemRef = candidate.itemRef,
+                name = candidate.name
+            )
+        )
+    }
+
     fun resolveCachedProduct(
         sessionId: String,
         normalizedBarcode: String

@@ -31,6 +31,10 @@ class MainActivity : Activity() {
     private var isOperationInProgress = false
     private var pendingAutoLookup = false
     private var currentSession: CollectionSession? = null
+    private var candidateDialog: AlertDialog? = null
+
+    internal val activeCandidateDialog: AlertDialog?
+        get() = candidateDialog
 
     private lateinit var prefs: SharedPreferences
     private lateinit var repository: CollectionRepository
@@ -70,6 +74,9 @@ class MainActivity : Activity() {
     }
 
     override fun onDestroy() {
+        candidateDialog?.setOnDismissListener(null)
+        candidateDialog?.dismiss()
+        candidateDialog = null
         mainHandler.removeCallbacksAndMessages(null)
         executor.shutdownNow()
         super.onDestroy()
@@ -348,10 +355,96 @@ class MainActivity : Activity() {
                     currentSession = updatedSession
                 }
                 setOperationInProgress(false)
-                showLookupResult(result)
-                restoreScanFocus()
+                if (result is LookupResult.Ambiguous) {
+                    showLookupResult(result)
+                    showCandidateDialog(session.sessionId, result)
+                } else {
+                    showLookupResult(result)
+                    restoreScanFocus()
+                }
             }
         }
+    }
+
+    private fun showCandidateDialog(
+        sessionId: String,
+        result: LookupResult.Ambiguous
+    ) {
+        var selectionStarted = false
+        lateinit var dialog: AlertDialog
+        val rows = result.candidates.mapIndexed { index, candidate ->
+            getString(R.string.ambiguous_candidate_row, index + 1, candidate.name)
+        }.toTypedArray()
+
+        dialog = AlertDialog.Builder(this)
+            .setTitle(R.string.ambiguous_candidate_dialog_title)
+            .setItems(rows) { _, index ->
+                selectionStarted = true
+                persistSelectedCandidate(sessionId, result.barcode, result.candidates[index])
+            }
+            .setNegativeButton(R.string.ambiguous_candidate_cancel, null)
+            .create()
+        dialog.setOnDismissListener {
+            if (candidateDialog === dialog) {
+                candidateDialog = null
+            }
+            if (!selectionStarted && !isDestroyed) {
+                showCandidateSelectionCancelled()
+            }
+        }
+        candidateDialog = dialog
+        dialog.show()
+    }
+
+    private fun persistSelectedCandidate(
+        sessionId: String,
+        barcode: String,
+        candidate: ProductCandidate
+    ) {
+        setOperationInProgress(true)
+        statusView.text = getString(R.string.ambiguous_selection_saving_status)
+        productNameView.text = ""
+        detailView.text = ""
+        executor.execute {
+            val result = try {
+                Result.success(
+                    repository.addSelectedAmbiguousCandidate(sessionId, barcode, candidate)
+                )
+            } catch (e: RuntimeException) {
+                Result.failure(e)
+            }
+            postToMain {
+                result.fold(
+                    onSuccess = { updatedSession ->
+                        currentSession = updatedSession
+                        setOperationInProgress(false)
+                        showLookupResult(
+                            LookupResult.Found(
+                                barcode = barcode,
+                                itemRef = candidate.itemRef,
+                                name = candidate.name
+                            )
+                        )
+                        restoreScanFocus()
+                    },
+                    onFailure = { error ->
+                        setOperationInProgress(false)
+                        if (error is CollectionValidationException) {
+                            showValidationError(error.message ?: "Товар нельзя добавить в сессию.")
+                        } else {
+                            showLocalError(error)
+                        }
+                    }
+                )
+            }
+        }
+    }
+
+    private fun showCandidateSelectionCancelled() {
+        statusView.text = getString(R.string.ambiguous_selection_cancelled_status)
+        productNameView.text = ""
+        detailView.text = getString(R.string.ambiguous_selection_cancelled_detail)
+        restoreScanFocus()
     }
 
     private fun changeQuantity(itemRef: String, value: String) {
@@ -567,13 +660,9 @@ class MainActivity : Activity() {
                 detailView.text = result.message ?: "Товар с таким штрихкодом не найден."
             }
             is LookupResult.Ambiguous -> {
-                statusView.text = "Неоднозначно"
+                statusView.text = getString(R.string.ambiguous_selection_required_status)
                 productNameView.text = ""
-                detailView.text = if (result.names.isEmpty()) {
-                    "1С вернула несколько совпадений."
-                } else {
-                    result.names.joinToString(separator = "\n")
-                }
+                detailView.text = getString(R.string.ambiguous_selection_required_detail)
             }
             is LookupResult.InvalidInput -> {
                 statusView.text = "Некорректный ввод"

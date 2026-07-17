@@ -62,7 +62,13 @@ class BarcodeLookupClientTest {
         val resultsWithoutFallback = listOf(
             LookupResult.Found("1", "item-1", "Товар"),
             LookupResult.NotFound("1", null),
-            LookupResult.Ambiguous("1", listOf("Товар A", "Товар B")),
+            LookupResult.Ambiguous(
+                "1",
+                listOf(
+                    ProductCandidate("item-a", "Товар A"),
+                    ProductCandidate("item-b", "Товар B")
+                )
+            ),
             LookupResult.InvalidInput("Некорректный запрос"),
             LookupResult.AuthError("Нет доступа"),
             LookupResult.ServerError("Ошибка ответа сервера")
@@ -90,7 +96,7 @@ class BarcodeLookupClientTest {
     }
 
     @Test
-    fun resolveReturnsAmbiguousNames() {
+    fun resolveRetainsAmbiguousCandidatesInResponseOrder() {
         enqueueResponse(
             200,
             """{"status":"ambiguous","barcode":"22","matches":[{"itemRef":"item-a","name":"Товар A"},{"itemRef":"item-b","name":"Товар B"}]}"""
@@ -100,7 +106,50 @@ class BarcodeLookupClientTest {
 
         assertTrue(result is LookupResult.Ambiguous)
         result as LookupResult.Ambiguous
-        assertEquals(listOf("Товар A", "Товар B"), result.names)
+        assertEquals("22", result.barcode)
+        assertEquals(
+            listOf(
+                ProductCandidate("item-a", "Товар A"),
+                ProductCandidate("item-b", "Товар B")
+            ),
+            result.candidates
+        )
+    }
+
+    @Test
+    fun resolveMapsAmbiguousWithFewerThanTwoCandidatesToServerError() {
+        enqueueResponse(
+            200,
+            """{"status":"ambiguous","barcode":"22","matches":[{"itemRef":"item-a","name":"Товар A"}]}"""
+        )
+
+        val result = client.resolve(serviceUrl, "", "", "22")
+
+        assertTrue(result is LookupResult.ServerError)
+    }
+
+    @Test
+    fun resolveMapsAmbiguousCandidateWithoutItemRefToServerError() {
+        enqueueResponse(
+            200,
+            """{"status":"ambiguous","barcode":"22","matches":[{"itemRef":"item-a","name":"Товар A"},{"name":"Товар B"}]}"""
+        )
+
+        val result = client.resolve(serviceUrl, "", "", "22")
+
+        assertTrue(result is LookupResult.ServerError)
+    }
+
+    @Test
+    fun resolveMapsAmbiguousCandidateWithBlankNameToServerError() {
+        enqueueResponse(
+            200,
+            """{"status":"ambiguous","barcode":"22","matches":[{"itemRef":"item-a","name":"Товар A"},{"itemRef":"item-b","name":"  "}]}"""
+        )
+
+        val result = client.resolve(serviceUrl, "", "", "22")
+
+        assertTrue(result is LookupResult.ServerError)
     }
 
     @Test

@@ -18,6 +18,11 @@ internal enum class LookupSource {
     CACHED
 }
 
+internal data class ProductCandidate(
+    val itemRef: String,
+    val name: String
+)
+
 internal sealed class LookupResult {
     data class Found(
         val barcode: String,
@@ -26,7 +31,10 @@ internal sealed class LookupResult {
         val source: LookupSource = LookupSource.ONLINE
     ) : LookupResult()
     data class NotFound(val barcode: String, val message: String?) : LookupResult()
-    data class Ambiguous(val barcode: String, val names: List<String>) : LookupResult()
+    data class Ambiguous(
+        val barcode: String,
+        val candidates: List<ProductCandidate>
+    ) : LookupResult()
     data class InvalidInput(val message: String) : LookupResult()
     data class AuthError(val message: String) : LookupResult()
     data class ServerError(val message: String) : LookupResult()
@@ -123,20 +131,28 @@ internal class BarcodeLookupClient {
                 barcode,
                 json.optString("message").ifBlank { null }
             )
-            "ambiguous" -> LookupResult.Ambiguous(barcode, readNames(matches))
+            "ambiguous" -> parseAmbiguousResult(barcode, matches)
             else -> LookupResult.ServerError("1С вернула неизвестный статус: $status.")
         }
     }
 
-    private fun readNames(matches: JSONArray): List<String> {
-        val names = mutableListOf<String>()
-        for (index in 0 until matches.length()) {
-            val name = matches.optJSONObject(index)?.optString("name").orEmpty()
-            if (name.isNotBlank()) {
-                names.add(name)
-            }
+    private fun parseAmbiguousResult(barcode: String, matches: JSONArray): LookupResult {
+        if (matches.length() < 2) {
+            return LookupResult.ServerError(AMBIGUOUS_PROTOCOL_ERROR)
         }
-        return names
+
+        val candidates = mutableListOf<ProductCandidate>()
+        for (index in 0 until matches.length()) {
+            val match = matches.optJSONObject(index)
+                ?: return LookupResult.ServerError(AMBIGUOUS_PROTOCOL_ERROR)
+            val itemRef = match.opt("itemRef") as? String
+            val name = match.opt("name") as? String
+            if (itemRef.isNullOrBlank() || name.isNullOrBlank()) {
+                return LookupResult.ServerError(AMBIGUOUS_PROTOCOL_ERROR)
+            }
+            candidates.add(ProductCandidate(itemRef = itemRef, name = name))
+        }
+        return LookupResult.Ambiguous(barcode = barcode, candidates = candidates)
     }
 
     private fun parseErrorMessage(response: String): String? =
@@ -181,6 +197,8 @@ internal class BarcodeLookupClient {
         private const val RESOLVE_PATH = "/v1/barcode/resolve"
         private const val CONNECT_TIMEOUT_MS = 10_000
         private const val READ_TIMEOUT_MS = 15_000
+        private const val AMBIGUOUS_PROTOCOL_ERROR =
+            "1С вернула ambiguous без двух полных вариантов товара."
     }
 }
 

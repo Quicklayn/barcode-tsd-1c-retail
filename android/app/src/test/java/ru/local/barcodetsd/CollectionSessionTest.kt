@@ -50,7 +50,13 @@ class CollectionSessionTest {
             .aggregate(found(ITEM_REF, "1"))
         val failures = listOf(
             LookupResult.NotFound("2", null),
-            LookupResult.Ambiguous("2", listOf("A", "B")),
+            LookupResult.Ambiguous(
+                "2",
+                listOf(
+                    ProductCandidate("item-a", "A"),
+                    ProductCandidate("item-b", "B")
+                )
+            ),
             LookupResult.InvalidInput("invalid"),
             LookupResult.AuthError("auth"),
             LookupResult.ServerError("server"),

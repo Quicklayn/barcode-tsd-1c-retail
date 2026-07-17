@@ -3,4 +3,12 @@
     <string name="default_service_url">http://10.0.2.2:8081/retailtest/hs/BarcodeTSD</string>
     <string name="cached_lookup_status">Добавлено из кеша</string>
     <string name="cached_lookup_detail">Товар добавлен из локального кеша; 1С недоступна.</string>
+    <string name="ambiguous_candidate_dialog_title">Выберите товар</string>
+    <string name="ambiguous_candidate_row">%1$d. %2$s</string>
+    <string name="ambiguous_candidate_cancel">Отмена</string>
+    <string name="ambiguous_selection_required_status">Требуется выбор</string>
+    <string name="ambiguous_selection_required_detail">Выберите один из найденных товаров. До выбора строка не добавлена.</string>
+    <string name="ambiguous_selection_saving_status">Сохранение выбора</string>
+    <string name="ambiguous_selection_cancelled_status">Не добавлено</string>
+    <string name="ambiguous_selection_cancelled_detail">Выбор товара отменён. Строка не добавлена.</string>
 </resources>

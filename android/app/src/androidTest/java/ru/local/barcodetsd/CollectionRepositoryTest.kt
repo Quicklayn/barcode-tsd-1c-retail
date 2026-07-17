@@ -201,6 +201,108 @@ class CollectionRepositoryTest {
     }
 
     @Test
+    fun selectedAmbiguousCandidateAddsExactValuesAndRepeatedSelectionIncrements() {
+        val repository = CollectionRepository(database.collectionSessionDao()) { SESSION_ID }
+        val draft = repository.loadOrCreate()
+        val candidate = ProductCandidate(ITEM_REF, "Выбранный товар")
+
+        val selected = repository.addSelectedAmbiguousCandidate(
+            draft.sessionId,
+            BARCODE,
+            candidate
+        )
+        val repeated = repository.addSelectedAmbiguousCandidate(
+            draft.sessionId,
+            BARCODE,
+            candidate
+        )
+
+        assertEquals(ITEM_REF, selected.lines.single().itemRef)
+        assertEquals("Выбранный товар", selected.lines.single().name)
+        assertEquals(BARCODE, selected.lines.single().barcode)
+        assertEquals(1_000L, selected.lines.single().quantity.milliUnits)
+        assertEquals(1, repeated.lines.size)
+        assertEquals(2_000L, repeated.lines.single().quantity.milliUnits)
+    }
+
+    @Test
+    fun selectedAmbiguousCandidateDoesNotCreateCachedProduct() {
+        val repository = CollectionRepository(database.collectionSessionDao()) { SESSION_ID }
+        val draft = repository.loadOrCreate()
+        repository.addSelectedAmbiguousCandidate(
+            draft.sessionId,
+            BARCODE,
+            ProductCandidate(ITEM_REF, "Выбранный товар")
+        )
+        database.collectionSessionDao().replaceSession(CollectionSession.draft(OTHER_SESSION_ID))
+
+        assertNull(repository.resolveCachedProduct(OTHER_SESSION_ID, BARCODE))
+    }
+
+    @Test
+    fun selectedAmbiguousCandidateDoesNotReplaceExistingCachedProduct() {
+        val repository = CollectionRepository(database.collectionSessionDao()) { SESSION_ID }
+        val draft = repository.loadOrCreate()
+        repository.addResolvedProduct(
+            draft.sessionId,
+            LookupResult.Found(BARCODE, ITEM_REF, "Кешированный товар")
+        )
+        database.collectionSessionDao().replaceSession(CollectionSession.draft(OTHER_SESSION_ID))
+        repository.addSelectedAmbiguousCandidate(
+            OTHER_SESSION_ID,
+            BARCODE,
+            ProductCandidate(OTHER_ITEM_REF, "Выбранный товар")
+        )
+        database.collectionSessionDao().replaceSession(CollectionSession.draft(THIRD_SESSION_ID))
+
+        val cached = repository.resolveCachedProduct(THIRD_SESSION_ID, BARCODE)
+
+        assertNotNull(cached)
+        assertEquals(ITEM_REF, cached?.found?.itemRef)
+        assertEquals("Кешированный товар", cached?.found?.name)
+    }
+
+    @Test
+    fun staleSessionRejectsSelectedAmbiguousCandidate() {
+        val repository = CollectionRepository(database.collectionSessionDao()) { SESSION_ID }
+        val staleDraft = repository.loadOrCreate()
+        database.collectionSessionDao().replaceSession(CollectionSession.draft(OTHER_SESSION_ID))
+
+        expectSessionChanged {
+            repository.addSelectedAmbiguousCandidate(
+                staleDraft.sessionId,
+                BARCODE,
+                ProductCandidate(ITEM_REF, "Выбранный товар")
+            )
+        }
+
+        val restored = repository.loadOrCreate()
+        assertEquals(OTHER_SESSION_ID, restored.sessionId)
+        assertEquals(0, restored.lines.size)
+    }
+
+    @Test
+    fun completedSessionRejectsSelectedAmbiguousCandidate() {
+        val repository = CollectionRepository(database.collectionSessionDao()) { SESSION_ID }
+        val completed = repository.loadOrCreate()
+            .aggregate(LookupResult.Found(BARCODE, ITEM_REF, "Товар"))
+            .complete()
+        repository.save(completed)
+
+        expectSessionChangedOrInvalidDraft {
+            repository.addSelectedAmbiguousCandidate(
+                completed.sessionId,
+                OTHER_BARCODE,
+                ProductCandidate(OTHER_ITEM_REF, "Выбранный товар")
+            )
+        }
+
+        val restored = repository.loadOrCreate()
+        assertEquals(CollectionState.COMPLETED, restored.state)
+        assertEquals(listOf(ITEM_REF), restored.lines.map { it.itemRef })
+    }
+
+    @Test
     fun staleOnlineAndCachedLookupsCannotMutateNewDraft() {
         val ids = ArrayDeque(listOf(SESSION_ID, OTHER_SESSION_ID))
         val repository = CollectionRepository(database.collectionSessionDao()) { ids.removeFirst() }
