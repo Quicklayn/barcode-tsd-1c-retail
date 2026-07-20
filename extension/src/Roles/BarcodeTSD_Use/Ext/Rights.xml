@@ -47,6 +47,17 @@
         </right>
     </object>
     <object>
+        <name>AccumulationRegister.ЗапасыНаСкладах</name>
+        <right>
+            <name>Read</name>
+            <value>true</value>
+        </right>
+        <right>
+            <name>View</name>
+            <value>true</value>
+        </right>
+    </object>
+    <object>
         <name>Catalog.СтруктурныеЕдиницы</name>
         <right>
             <name>Read</name>

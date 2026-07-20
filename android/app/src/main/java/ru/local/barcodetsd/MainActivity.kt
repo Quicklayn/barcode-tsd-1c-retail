@@ -27,11 +27,13 @@ class MainActivity : Activity() {
     private val executor: ExecutorService = Executors.newSingleThreadExecutor()
     private val mainHandler = Handler(Looper.getMainLooper())
     private val lookupClient = BarcodeLookupClient()
+    private val productStockClient = ProductStockClient()
     private val collectionClient = BarcodeCollectionClient()
     private val scanSubmissionGate = ScanSubmissionGate()
     private var isOperationInProgress = false
     private var pendingAutoLookup = false
     private var currentSession: CollectionSession? = null
+    private var latestResolvedProduct: ProductCandidate? = null
     private var candidateDialog: AlertDialog? = null
 
     internal val activeCandidateDialog: AlertDialog?
@@ -44,6 +46,7 @@ class MainActivity : Activity() {
     private lateinit var passwordInput: EditText
     private lateinit var barcodeInput: EditText
     private lateinit var lookupButton: Button
+    private lateinit var stockButton: Button
     private lateinit var progressBar: ProgressBar
     private lateinit var statusView: TextView
     private lateinit var productNameView: TextView
@@ -123,6 +126,11 @@ class MainActivity : Activity() {
             id = R.id.lookup_button
             text = "Найти и добавить"
         }
+        stockButton = Button(this).apply {
+            id = R.id.stock_button
+            text = getString(R.string.stock_action)
+            visibility = View.GONE
+        }
         progressBar = ProgressBar(this).apply {
             id = R.id.lookup_progress
             isIndeterminate = true
@@ -180,6 +188,7 @@ class MainActivity : Activity() {
         content.addView(progressBar, wrapWrap(dp(8)))
         content.addView(statusView, matchWrap(dp(6)))
         content.addView(productNameView, matchWrap(dp(6)))
+        content.addView(stockButton, matchWrap(dp(8)))
         content.addView(detailView, matchWrap(dp(16)))
         content.addView(label("Строки"), matchWrap(dp(4)))
         content.addView(collectionSummaryView, matchWrap(dp(4)))
@@ -195,6 +204,7 @@ class MainActivity : Activity() {
 
     private fun bindActions() {
         lookupButton.setOnClickListener { startLookup() }
+        stockButton.setOnClickListener { startStockLookup() }
         completeButton.setOnClickListener { completeSession() }
         sendButton.setOnClickListener { submitSession() }
         newDraftButton.setOnClickListener { startNewDraft() }
@@ -306,6 +316,7 @@ class MainActivity : Activity() {
         }
 
         saveSettings()
+        latestResolvedProduct = null
         setOperationInProgress(true)
         statusView.text = "Запрос к 1С"
         productNameView.text = ""
@@ -369,6 +380,42 @@ class MainActivity : Activity() {
                     showLookupResult(result)
                     restoreScanFocus()
                 }
+            }
+        }
+    }
+
+    private fun startStockLookup() {
+        if (isOperationInProgress) {
+            return
+        }
+        val product = latestResolvedProduct ?: return
+        val serviceUrl = serviceUrlInput.text.toString().trim()
+        if (serviceUrl.isEmpty()) {
+            showStockResult(
+                product,
+                ProductStockResult.InvalidInput("Укажите URL сервиса 1С.")
+            )
+            return
+        }
+
+        saveSettings()
+        setOperationInProgress(true)
+        statusView.text = "Запрос остатка"
+        detailView.text = ""
+        val user = userInput.text.toString()
+        val password = passwordInput.text.toString()
+        executor.execute {
+            val result = try {
+                productStockClient.resolve(serviceUrl, user, password, product.itemRef)
+            } catch (e: RuntimeException) {
+                ProductStockResult.ConnectionError(
+                    e.localizedMessage ?: "Не удалось выполнить запрос остатка к 1С."
+                )
+            }
+            postToMain {
+                setOperationInProgress(false)
+                showStockResult(product, result)
+                restoreScanFocus()
             }
         }
     }
@@ -649,6 +696,7 @@ class MainActivity : Activity() {
     private fun showLookupResult(result: LookupResult) {
         when (result) {
             is LookupResult.Found -> {
+                latestResolvedProduct = ProductCandidate(result.itemRef, result.name)
                 statusView.text = if (result.source == LookupSource.CACHED) {
                     getString(R.string.cached_lookup_status)
                 } else {
@@ -662,33 +710,70 @@ class MainActivity : Activity() {
                 }
             }
             is LookupResult.NotFound -> {
+                latestResolvedProduct = null
                 statusView.text = "Не найдено"
                 productNameView.text = ""
                 detailView.text = result.message ?: "Товар с таким штрихкодом не найден."
             }
             is LookupResult.Ambiguous -> {
+                latestResolvedProduct = null
                 statusView.text = getString(R.string.ambiguous_selection_required_status)
                 productNameView.text = ""
                 detailView.text = getString(R.string.ambiguous_selection_required_detail)
             }
             is LookupResult.InvalidInput -> {
+                latestResolvedProduct = null
                 statusView.text = "Некорректный ввод"
                 productNameView.text = ""
                 detailView.text = result.message
             }
             is LookupResult.AuthError -> {
+                latestResolvedProduct = null
                 statusView.text = "Ошибка авторизации"
                 productNameView.text = ""
                 detailView.text = result.message
             }
             is LookupResult.ServerError -> {
+                latestResolvedProduct = null
                 statusView.text = "Ошибка сервера"
                 productNameView.text = ""
                 detailView.text = result.message
             }
             is LookupResult.ConnectionError -> {
+                latestResolvedProduct = null
                 statusView.text = "Ошибка подключения"
                 productNameView.text = ""
+                detailView.text = result.message
+            }
+        }
+        renderSession()
+    }
+
+    private fun showStockResult(product: ProductCandidate, result: ProductStockResult) {
+        productNameView.text = product.name
+        when (result) {
+            is ProductStockResult.Found -> {
+                statusView.text = "Остаток"
+                detailView.text = "Остаток: ${result.quantity.toCompactDecimal()}"
+            }
+            is ProductStockResult.InvalidInput -> {
+                statusView.text = "Некорректный ввод"
+                detailView.text = result.message
+            }
+            is ProductStockResult.AuthError -> {
+                statusView.text = "Ошибка авторизации"
+                detailView.text = result.message
+            }
+            is ProductStockResult.Conflict -> {
+                statusView.text = "Конфликт"
+                detailView.text = "${result.message}\nКод: ${result.error}"
+            }
+            is ProductStockResult.ServerError -> {
+                statusView.text = "Ошибка сервера"
+                detailView.text = result.message
+            }
+            is ProductStockResult.ConnectionError -> {
+                statusView.text = "Ошибка подключения"
                 detailView.text = result.message
             }
         }
@@ -756,6 +841,7 @@ class MainActivity : Activity() {
             linesContainer.removeAllViews()
             barcodeInput.isEnabled = false
             lookupButton.isEnabled = false
+            stockButton.visibility = View.GONE
             completeButton.visibility = View.GONE
             sendButton.visibility = View.GONE
             newDraftButton.visibility = View.GONE
@@ -779,6 +865,8 @@ class MainActivity : Activity() {
         val draftEditable = session.state == CollectionState.DRAFT && !isOperationInProgress
         barcodeInput.isEnabled = draftEditable
         lookupButton.isEnabled = draftEditable
+        stockButton.visibility = if (latestResolvedProduct == null) View.GONE else View.VISIBLE
+        stockButton.isEnabled = latestResolvedProduct != null && !isOperationInProgress
 
         completeButton.visibility = if (session.state == CollectionState.DRAFT) {
             View.VISIBLE

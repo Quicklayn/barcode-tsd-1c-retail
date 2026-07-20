@@ -6,6 +6,7 @@
     <item name="session_state_view" type="id" />
     <item name="barcode_input" type="id" />
     <item name="lookup_button" type="id" />
+    <item name="stock_button" type="id" />
     <item name="lookup_progress" type="id" />
     <item name="status_view" type="id" />
     <item name="product_name_view" type="id" />

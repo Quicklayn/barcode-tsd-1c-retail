@@ -460,6 +460,168 @@ class MainActivityTest {
     }
 
     @Test
+    fun stockActionShowsServerBalanceWithoutChangingDraft() {
+        HttpTestServer(
+            statusCode = 200,
+            responseBody = "",
+            requestCount = 2,
+            responseForRequest = { requestLine ->
+                if (requestLine.contains("/v1/barcode/resolve")) {
+                    200 to """{"status":"found","barcode":"$ONLINE_BARCODE","matches":[{"itemRef":"$ONLINE_ITEM_REF","name":"$ONLINE_NAME"}]}"""
+                } else {
+                    200 to """{"status":"found","itemRef":"$ONLINE_ITEM_REF","quantity":12.5}"""
+                }
+            }
+        ).use { server ->
+            ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+                waitUntil(scenario) { activity ->
+                    activity.findViewById<Button>(R.id.lookup_button).isEnabled
+                }
+                scenario.onActivity { activity ->
+                    activity.findViewById<EditText>(R.id.service_url_input).setText(server.serviceUrl)
+                    activity.findViewById<EditText>(R.id.barcode_input).setText(ONLINE_BARCODE)
+                    activity.findViewById<Button>(R.id.lookup_button).performClick()
+                }
+                waitUntil(scenario) { activity ->
+                    activity.findViewById<Button>(R.id.stock_button).visibility == View.VISIBLE
+                }
+
+                scenario.onActivity { activity ->
+                    activity.findViewById<Button>(R.id.stock_button).performClick()
+                }
+                waitUntil(scenario) { activity ->
+                    activity.findViewById<TextView>(R.id.status_view).text.toString() == "Остаток"
+                }
+                scenario.onActivity { activity ->
+                    assertEquals(
+                        ONLINE_NAME,
+                        activity.findViewById<TextView>(R.id.product_name_view).text.toString()
+                    )
+                    assertEquals(
+                        "Остаток: 12.5",
+                        activity.findViewById<TextView>(R.id.detail_view).text.toString()
+                    )
+                    assertTrue(activity.findViewById<EditText>(R.id.barcode_input).hasFocus())
+                }
+            }
+        }
+
+        val restored = CollectionRepository(database.collectionSessionDao()).loadOrCreate()
+        assertEquals(CollectionState.DRAFT, restored.state)
+        assertEquals(1, restored.lines.size)
+        assertEquals(ONLINE_ITEM_REF, restored.lines.single().itemRef)
+        assertEquals(1_000L, restored.lines.single().quantity.milliUnits)
+    }
+
+    @Test
+    fun stockConflictPreservesLatestProductAndDraft() {
+        HttpTestServer(
+            statusCode = 200,
+            responseBody = "",
+            requestCount = 2,
+            responseForRequest = { requestLine ->
+                if (requestLine.contains("/v1/barcode/resolve")) {
+                    200 to onlineLookupResponse()
+                } else {
+                    409 to """{"error":"warehouse_not_configured","message":"Склад не настроен"}"""
+                }
+            }
+        ).use { server ->
+            ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+                waitUntil(scenario) { activity ->
+                    activity.findViewById<Button>(R.id.lookup_button).isEnabled
+                }
+                scenario.onActivity { activity ->
+                    activity.findViewById<EditText>(R.id.service_url_input).setText(server.serviceUrl)
+                    activity.findViewById<EditText>(R.id.barcode_input).setText(ONLINE_BARCODE)
+                    activity.findViewById<Button>(R.id.lookup_button).performClick()
+                }
+                waitUntil(scenario) { activity ->
+                    activity.findViewById<Button>(R.id.stock_button).visibility == View.VISIBLE
+                }
+                scenario.onActivity { activity ->
+                    activity.findViewById<Button>(R.id.stock_button).performClick()
+                }
+                waitUntil(scenario) { activity ->
+                    activity.findViewById<TextView>(R.id.status_view).text.toString() == "Конфликт"
+                }
+                scenario.onActivity { activity ->
+                    assertEquals(
+                        ONLINE_NAME,
+                        activity.findViewById<TextView>(R.id.product_name_view).text.toString()
+                    )
+                    assertEquals(
+                        "Склад не настроен\nКод: warehouse_not_configured",
+                        activity.findViewById<TextView>(R.id.detail_view).text.toString()
+                    )
+                    assertEquals(View.VISIBLE, activity.findViewById<Button>(R.id.stock_button).visibility)
+                }
+            }
+        }
+
+        val restored = CollectionRepository(database.collectionSessionDao()).loadOrCreate()
+        assertEquals(CollectionState.DRAFT, restored.state)
+        assertEquals(ONLINE_ITEM_REF, restored.lines.single().itemRef)
+        assertEquals(1_000L, restored.lines.single().quantity.milliUnits)
+    }
+
+    @Test
+    fun stockActionPreservesSentSession() {
+        HttpTestServer(
+            statusCode = 200,
+            responseBody = "",
+            requestCount = 3,
+            responseForRequest = { requestLine ->
+                when {
+                    requestLine.contains("/v1/barcode/resolve") -> 200 to onlineLookupResponse()
+                    requestLine.contains("/v1/barcode-collection-sessions") -> {
+                        200 to """{"status":"accepted","sessionId":"$SESSION_ID","documentRef":"$SENT_DOCUMENT_REF"}"""
+                    }
+                    else -> 200 to """{"status":"found","itemRef":"$ONLINE_ITEM_REF","quantity":0}"""
+                }
+            }
+        ).use { server ->
+            ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+                waitUntil(scenario) { activity ->
+                    activity.findViewById<Button>(R.id.lookup_button).isEnabled
+                }
+                scenario.onActivity { activity ->
+                    activity.findViewById<EditText>(R.id.service_url_input).setText(server.serviceUrl)
+                    activity.findViewById<EditText>(R.id.barcode_input).setText(ONLINE_BARCODE)
+                    activity.findViewById<Button>(R.id.lookup_button).performClick()
+                }
+                waitUntil(scenario) { activity ->
+                    activity.findViewById<Button>(R.id.complete_button).isEnabled
+                }
+                scenario.onActivity { activity ->
+                    activity.findViewById<Button>(R.id.complete_button).performClick()
+                }
+                waitUntil(scenario) { activity ->
+                    activity.findViewById<Button>(R.id.send_button).isEnabled
+                }
+                scenario.onActivity { activity ->
+                    activity.findViewById<Button>(R.id.send_button).performClick()
+                }
+                waitUntil(scenario) { activity ->
+                    activity.findViewById<TextView>(R.id.session_state_view).text.toString() == "Отправлена"
+                }
+                scenario.onActivity { activity ->
+                    activity.findViewById<Button>(R.id.stock_button).performClick()
+                }
+                waitUntil(scenario) { activity ->
+                    activity.findViewById<TextView>(R.id.status_view).text.toString() == "Остаток"
+                }
+            }
+        }
+
+        val restored = CollectionRepository(database.collectionSessionDao()).loadOrCreate()
+        assertEquals(CollectionState.SENT, restored.state)
+        assertEquals(SENT_DOCUMENT_REF, restored.documentRef)
+        assertEquals(ONLINE_ITEM_REF, restored.lines.single().itemRef)
+        assertEquals(1_000L, restored.lines.single().quantity.milliUnits)
+    }
+
+    @Test
     fun receivedNotFoundResponseDoesNotUseCachedProduct() {
         val repository = CollectionRepository(database.collectionSessionDao()) { SESSION_ID }
         repository.addResolvedProduct(
@@ -535,10 +697,14 @@ class MainActivityTest {
     private fun ambiguousResponseBody(): String =
         """{"status":"ambiguous","barcode":"$AMBIGUOUS_RESPONSE_BARCODE","matches":[{"itemRef":"$FIRST_CANDIDATE_ITEM_REF","name":"$FIRST_CANDIDATE_NAME"},{"itemRef":"$SECOND_CANDIDATE_ITEM_REF","name":"$SECOND_CANDIDATE_NAME"}]}"""
 
+    private fun onlineLookupResponse(): String =
+        """{"status":"found","barcode":"$ONLINE_BARCODE","matches":[{"itemRef":"$ONLINE_ITEM_REF","name":"$ONLINE_NAME"}]}"""
+
     private class HttpTestServer(
         statusCode: Int,
         responseBody: String,
-        requestCount: Int = 1
+        requestCount: Int = 1,
+        private val responseForRequest: ((String) -> Pair<Int, String>)? = null
     ) : AutoCloseable {
 
         private val socket = ServerSocket(0, 1, InetAddress.getByName("127.0.0.1"))
@@ -554,10 +720,12 @@ class MainActivityTest {
                         socket.accept().use { client ->
                             client.soTimeout = 5_000
                             val input = BufferedInputStream(client.getInputStream())
-                            readRequest(input)
-                            val body = responseBody.toByteArray(StandardCharsets.UTF_8)
+                            val requestLine = readRequest(input)
+                            val response = responseForRequest?.invoke(requestLine)
+                                ?: (statusCode to responseBody)
+                            val body = response.second.toByteArray(StandardCharsets.UTF_8)
                             val headers = buildString {
-                                append("HTTP/1.1 $statusCode Test\r\n")
+                                append("HTTP/1.1 ${response.first} Test\r\n")
                                 append("Content-Type: application/json; charset=utf-8\r\n")
                                 append("Content-Length: ${body.size}\r\n")
                                 append("Connection: close\r\n\r\n")
@@ -580,8 +748,8 @@ class MainActivityTest {
             executor.shutdownNow()
         }
 
-        private fun readRequest(input: InputStream) {
-            readAsciiLine(input)
+        private fun readRequest(input: InputStream): String {
+            val requestLine = readAsciiLine(input)
             var contentLength = 0
             while (true) {
                 val line = readAsciiLine(input)
@@ -594,9 +762,10 @@ class MainActivityTest {
             }
             repeat(contentLength) {
                 if (input.read() < 0) {
-                    return
+                    return requestLine
                 }
             }
+            return requestLine
         }
 
         private fun readAsciiLine(input: InputStream): String {

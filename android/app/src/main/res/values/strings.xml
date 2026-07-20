@@ -4,6 +4,7 @@
     <string name="default_service_url">http://10.0.2.2:8081/retailtest/hs/BarcodeTSD</string>
     <string name="cached_lookup_status">Добавлено из кеша</string>
     <string name="cached_lookup_detail">Товар добавлен из локального кеша; 1С недоступна.</string>
+    <string name="stock_action">Показать остаток</string>
     <string name="ambiguous_candidate_dialog_title">Выберите товар</string>
     <string name="ambiguous_candidate_row">%1$d. %2$s</string>
     <string name="ambiguous_candidate_cancel">Отмена</string>

@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Barcode TSD API
-  version: 0.2.0
+  version: 0.3.0
   description: API contract between the Android TSD application and 1C:Retail.
 servers:
   - url: http://localhost/{infobase}/hs/BarcodeTSD
@@ -44,6 +44,57 @@ paths:
           description: Authentication required or rejected by 1C web publication before the handler runs; response body is publication-dependent.
         "403":
           description: Access forbidden by 1C web publication or infobase roles before the handler runs; response body is publication-dependent.
+        "500":
+          description: Unexpected 1C-side error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /v1/product-stock/resolve:
+    post:
+      operationId: resolveProductStock
+      summary: Resolve the current product balance in the configured TSD warehouse.
+      description: Reads the aggregate current balance for one resolved product without creating or changing business data.
+      security:
+        - basicAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductStockResolveRequest"
+            examples:
+              product:
+                value:
+                  itemRef: "14f2c4da-8238-4a9f-bf56-3ec3a2f4d86f"
+      responses:
+        "200":
+          description: Current product balance returned.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductStockResolveResponse"
+        "400":
+          description: Invalid JSON, request shape, or product reference.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Authentication required or rejected by 1C web publication before the handler runs; response body is publication-dependent.
+        "403":
+          description: Access forbidden by 1C web publication or infobase roles before the handler runs; response body is publication-dependent.
+        "409":
+          description: The extension warehouse is not configured.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                warehouseNotConfigured:
+                  value:
+                    error: warehouse_not_configured
+                    message: The Barcode TSD warehouse is not configured.
         "500":
           description: Unexpected 1C-side error.
           content:
@@ -164,6 +215,36 @@ components:
         name:
           type: string
           description: Product name shown to the TSD user.
+    ProductStockResolveRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - itemRef
+      properties:
+        itemRef:
+          type: string
+          format: uuid
+          description: Opaque 1C product reference returned by barcode lookup.
+    ProductStockResolveResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - status
+        - itemRef
+        - quantity
+      properties:
+        status:
+          type: string
+          const: found
+        itemRef:
+          type: string
+          format: uuid
+        quantity:
+          type: number
+          minimum: -999999999999.999
+          maximum: 999999999999.999
+          multipleOf: 0.001
+          description: Aggregate current warehouse quantity; zero and negative balances are valid.
     BarcodeCollectionSessionRequest:
       type: object
       additionalProperties: false

@@ -109,15 +109,25 @@ also allow manual input for testing.
 
 ### Requirement: Minimal Result Surface
 
-The Android MVP MUST display only the product name for a successful lookup.
+The Android application MUST display the product name for a successful lookup
+and MAY expose an explicit stock action for the resolved product, but it MUST
+not query or display stock until the operator invokes that action.
 
-#### Scenario: Successful lookup returns extra backend fields
+#### Scenario: Successful lookup exposes no automatic stock
 
-- GIVEN the backend response includes an item reference for future operations
-- WHEN the app displays the successful result
+- GIVEN the backend response includes an item reference for a found product
+- WHEN the app displays the successful lookup result
 - THEN the visible product result contains the product name
-- AND the app does not display stock, price, package, characteristic, or series
-  data.
+- AND the app exposes the stock action for that resolved item
+- AND the app does not automatically call the stock endpoint or display stock,
+  price, package, characteristic, or series data
+
+#### Scenario: Lookup without one resolved product exposes no stock action
+
+- GIVEN the backend response is `not_found`, incomplete, or unselected
+  `ambiguous`
+- WHEN the app displays the lookup state
+- THEN it does not expose the stock action
 
 ### Requirement: Successful Product Lookup Cache
 The Android application MUST persist the normalized barcode, 1C `itemRef`, and product name after every unambiguous successful online lookup and MUST replace the cached row when a later successful lookup resolves the same barcode.

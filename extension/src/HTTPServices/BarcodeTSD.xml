@@ -42,6 +42,33 @@
 					</Method>
 				</ChildObjects>
 			</URLTemplate>
+			<URLTemplate uuid="80732dab-4ee7-4f80-a433-760edacedfba">
+				<Properties>
+					<Name>ProductStock</Name>
+					<Synonym>
+						<v8:item>
+							<v8:lang>ru</v8:lang>
+							<v8:content>Остатки номенклатуры</v8:content>
+						</v8:item>
+					</Synonym>
+					<Template>/v1/product-stock/resolve</Template>
+				</Properties>
+				<ChildObjects>
+					<Method uuid="bf39813c-fe5e-4faf-9f69-edc16e5050fb">
+						<Properties>
+							<Name>Resolve</Name>
+							<Synonym>
+								<v8:item>
+									<v8:lang>ru</v8:lang>
+									<v8:content>Получить остаток</v8:content>
+								</v8:item>
+							</Synonym>
+							<HTTPMethod>POST</HTTPMethod>
+							<Handler>ProductStockResolve</Handler>
+						</Properties>
+					</Method>
+				</ChildObjects>
+			</URLTemplate>
 			<URLTemplate uuid="db0e1403-f4b3-4d0f-b264-f8c71edce97d">
 				<Properties>
 					<Name>BarcodeCollectionSessions</Name>
